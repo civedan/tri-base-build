@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bike Library & HR/Power Zones — Base Build</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/theme.css">
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="tri-nav" id="triNav"></nav>
+
+  <header>
+    <div class="eyebrow">Personal · Base Build Companion</div>
+    <h1>Bike Library & HR/Power Zones</h1>
+    <p class="subline">Outdoor rides are governed by heart rate (terrain won't hold a power number steady); indoor Zwift ERG work is governed by power off your FTP.</p>
+  </header>
+
+  <div class="about" id="aboutBlock"></div>
+
+  <div class="venue-filter-row" id="venueRow"></div>
+  <div class="rec-card" id="recCard"></div>
+  <div class="workout-grid" id="bikeGrid"></div>
+
+  <div class="summary-card">
+    <h3>Recent history</h3>
+    <div id="historyList"></div>
+  </div>
+
+  <!-- ============ HR ZONES ============ -->
+  <div class="section">
+    <h2>Heart Rate Zones — Karvonen Method</h2>
+    <div class="sub">Target HR = ((Max HR − Resting HR) × %intensity) + Resting HR. Used for all outdoor riding.</div>
+    <div class="maf-card">
+      <div class="grid2">
+        <div class="field-row">
+          <label>Resting HR (bpm)</label>
+          <input type="number" id="in-resting" min="30" max="100">
+        </div>
+        <div class="field-row">
+          <label>Max HR (bpm)</label>
+          <input type="number" id="in-maxhr" min="120" max="230">
+        </div>
+      </div>
+      <div class="maf-result">
+        <div>
+          <div class="maf-num" id="hrrNum">—</div>
+          <div class="maf-lbl">Heart rate reserve (bpm)</div>
+        </div>
+        <div class="maf-formula" id="hrrFormula"></div>
+      </div>
+      <button id="saveHrBtn">Save</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>HR Zone Table</h2>
+    <div class="sub">Every easy spin and long ride in the base block targets Zone 2. Drifting into Zone 3 on flat terrain is a sign to ease off.</div>
+    <div class="zone-grid" id="hrZoneGrid"></div>
+  </div>
+
+  <!-- ============ FTP & POWER ZONES ============ -->
+  <div class="section">
+    <h2>Your FTP</h2>
+    <div class="sub">Set from a logged test below, or enter directly if Zwift has already detected one for you.</div>
+    <div class="maf-card">
+      <div class="grid2">
+        <div class="field-row">
+          <label>Current FTP (watts)</label>
+          <input type="number" id="in-ftp" min="50" max="600" placeholder="Not set yet">
+        </div>
+        <div class="field-row">
+          <label>Body weight (kg, optional — for W/kg)</label>
+          <input type="number" id="in-weight" min="30" max="200" step="0.1" placeholder="e.g. 78">
+        </div>
+      </div>
+      <div class="maf-result">
+        <div>
+          <div class="maf-num" id="ftpNum">—</div>
+          <div class="maf-lbl">Watts</div>
+        </div>
+        <div class="maf-formula" id="ftpFormula"></div>
+      </div>
+      <button id="saveFtpBtn">Save</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Power Zone Table</h2>
+    <div class="sub">Coggan 7-zone model, as a % of FTP. These are what ERG mode targets in structured Zwift workouts.</div>
+    <div class="zone-grid" id="powerZoneGrid"></div>
+  </div>
+
+  <div class="section">
+    <h2>Log an FTP Test</h2>
+    <div class="sub">Pick the protocol you used on Zwift and enter the number it gave you — this applies the right calculation and stores your FTP history.</div>
+    <div class="log-form">
+      <div class="grid3">
+        <div class="field-row">
+          <label>Test type</label>
+          <select id="entry-type">
+            <option value="ramp">Ramp Test (Zwift takes 75% of last full minute)</option>
+            <option value="ramp_lite">Ramp Test Lite (same 75% calc)</option>
+            <option value="twenty_min">20-Minute Test (Zwift takes 95% of avg power)</option>
+            <option value="manual">Manual / Zwift auto-detected (zFTP) — enter FTP directly</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Date</label>
+          <input type="date" id="entry-date">
+        </div>
+        <div class="field-row" id="entry-power-row">
+          <label id="entry-power-label">Last full minute power (W)</label>
+          <input type="number" id="entry-power" min="50" max="1200" placeholder="e.g. 240">
+        </div>
+      </div>
+      <div class="field-row">
+        <label>Notes (optional)</label>
+        <input type="text" id="entry-note" placeholder="e.g. warm room, fan on, felt strong">
+      </div>
+      <div class="maf-formula" id="entryPreview" style="margin-bottom:12px;"></div>
+      <button id="logEntryBtn">Log test</button>
+    </div>
+  </div>
+
+  <!-- ============ QUICK REFERENCE ============ -->
+  <div class="section">
+    <h2>Quick Reference — HR & Watts Side by Side</h2>
+    <div class="sub">One glance for Zwift or your Apple Watch bike app. Zones 6–7 (Anaerobic/Neuromuscular) have no clean HR equivalent — power is the only meaningful signal at that intensity.</div>
+    <div class="ref-wrap">
+      <table class="ref-table" id="quickRefTable"></table>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>FTP Test Trend</h2>
+    <div class="sub">Track how your FTP moves over time as you retest every 4–8 weeks.</div>
+    <div class="summary-card" id="ftpTrendList"></div>
+  </div>
+
+  <div class="footer-note">Saved automatically in this browser (localStorage), shared with every other page on this site.</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../shared/storage.js"></script>
+<script src="../data/strength-library.js"></script>
+<script src="../data/run-library.js"></script>
+<script src="../data/bike-library.js"></script>
+<script src="../data/swim-library.js"></script>
+<script src="../data/yoga-library.js"></script>
+<script src="../data/zones.js"></script>
+<script src="../shared/nav.js"></script>
+<script>
+const DISCIPLINE_LIB = {run:RUN_LIBRARY, bike:BIKE_LIBRARY, swim:SWIM_LIBRARY, yoga:YOGA_LIBRARY};
+
+let state = null;
+let openCardId = null;
+let highlightId = null;
+let bikeVenue = 'all';
+
+function saveState(){
+  if(!triSaveState(state)) showToast('Save failed — try again');
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------- SHARED ROTATION HELPERS ---------- */
+function findLibraryWorkout(id){
+  for(const cat of Object.keys(LIBRARY)){
+    const found = LIBRARY[cat].find(x=>x.id===id);
+    if(found) return {category:cat, discipline:'strength', workout:found};
+  }
+  for(const disc of Object.keys(DISCIPLINE_LIB)){
+    const found = DISCIPLINE_LIB[disc].find(x=>x.id===id);
+    if(found) return {category:null, discipline:disc, workout:found};
+  }
+  return null;
+}
+function daysSince(iso){
+  if(!iso) return Infinity;
+  const then = new Date(iso);
+  const now = new Date();
+  return Math.floor((now - then) / (1000*60*60*24));
+}
+function lastDoneFor(id){
+  const entries = state.history.filter(h=>h.id===id);
+  if(!entries.length) return null;
+  return entries.reduce((a,b)=> new Date(a.date) > new Date(b.date) ? a : b);
+}
+function recentFocusTags(n=2){
+  const recent = [...state.history].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,n);
+  const tags = new Set();
+  recent.forEach(h=>{
+    const found = findLibraryWorkout(h.id);
+    if(found) found.workout.focus.forEach(t=>tags.add(t));
+  });
+  return tags;
+}
+function recommend(list){
+  const avoidTags = recentFocusTags(2);
+  let best = null, bestScore = -Infinity;
+  list.forEach(x=>{
+    const last = lastDoneFor(x.id);
+    const gap = last ? daysSince(last.date) : 999;
+    let overlap = x.focus.filter(t=>avoidTags.has(t)).length;
+    const score = gap - (overlap * 4);
+    if(score > bestScore){ bestScore = score; best = x; }
+  });
+  return best;
+}
+function recommendReason(x){
+  const last = lastDoneFor(x.id);
+  if(!last) return `You haven't done this one yet — good chance to add it into the rotation.`;
+  const gap = daysSince(last.date);
+  const avoidTags = recentFocusTags(2);
+  const overlap = x.focus.filter(t=>avoidTags.has(t));
+  if(overlap.length === 0 && gap >= 7){
+    return `It's been ${gap} day${gap===1?'':'s'} since this one, and it doesn't repeat what you did most recently — good variety pick.`;
+  }
+  if(gap >= 7) return `It's been ${gap} day${gap===1?'':'s'} since you did this one — due for a repeat.`;
+  return `Least recently used option in this view (${gap} day${gap===1?'':'s'} ago) that still fits.`;
+}
+
+/* ---------- BIKE LIBRARY GRID ---------- */
+function currentBikeList(){
+  return bikeVenue==='all' ? BIKE_LIBRARY : BIKE_LIBRARY.filter(x=>x.venue===bikeVenue);
+}
+function renderAbout(){
+  document.getElementById('aboutBlock').innerHTML =
+    `<b>What's here:</b> every bike session in the plan — outdoor and indoor (Zwift/ERG) are tagged separately. Outdoor is where your long rides and hill-repeat intensity live; indoor is where structured intervals belong once quality work starts.<br><br><b>Rotation:</b> the recommendation avoids repeating whatever focus area you hit in your last couple of logged sessions across every discipline.<br><br><b>Two ways to use it:</b> swap a workout directly onto a bike day on the <a href="../index.html" class="lib-link">Schedule</a>, or log one here on the fly.`;
+}
+function renderVenueRow(){
+  const el = document.getElementById('venueRow');
+  el.innerHTML = '';
+  BIKE_VENUE_OPTIONS.forEach(([id,label])=>{
+    const btn = document.createElement('div');
+    btn.className = 'lib-tab'+(id===bikeVenue?' active':'');
+    btn.textContent = label;
+    btn.onclick = ()=>{ bikeVenue = id; openCardId = null; render(); };
+    el.appendChild(btn);
+  });
+}
+function renderRecommendation(){
+  const list = currentBikeList();
+  const el = document.getElementById('recCard');
+  if(!list.length){ el.innerHTML=''; return; }
+  const pick = recommend(list);
+  const reason = recommendReason(pick);
+  el.innerHTML = `
+    <div class="rec-eyebrow">Recommended</div>
+    <div class="rec-title">${pick.title}</div>
+    <div class="rec-why">${reason}</div>
+    <div class="rec-meta"><span><b>${pick.duration} min</b></span><span>${pick.equipment}</span></div>
+    <button class="small" id="jump-${pick.id}">Show this workout</button>
+  `;
+  document.getElementById(`jump-${pick.id}`).onclick = ()=>{
+    openCardId = pick.id;
+    render();
+    document.getElementById('libcard-'+pick.id)?.scrollIntoView({behavior:'smooth', block:'center'});
+  };
+}
+function renderGrid(){
+  const el = document.getElementById('bikeGrid');
+  el.innerHTML = '';
+  currentBikeList().forEach(x=>{
+    const last = lastDoneFor(x.id);
+    const card = document.createElement('div');
+    card.className = 'wcard'+(openCardId===x.id?' open':'')+(highlightId===x.id?' highlight':'');
+    card.id = 'libcard-'+x.id;
+    card.innerHTML = `
+      <div class="wcard-top">
+        <div>
+          <div class="wcard-title">${x.title}</div>
+          <div class="wcard-meta">${x.equipment}</div>
+        </div>
+        <div class="wcard-dur">${x.duration} min</div>
+      </div>
+      <div class="tag-row">${x.focus.map(t=>`<span class="${t==='future'?'tag-future':'tag'}">${t}</span>`).join('')}</div>
+      <div class="last-done">${last ? 'Last done '+daysSince(last.date)+' day'+(daysSince(last.date)===1?'':'s')+' ago'+(last.rpe?' · RPE '+last.rpe:'') : 'Not logged yet'}</div>
+      <div class="wcard-detail">
+        <div class="blurb">${x.blurb}</div>
+        <div class="ex-list">
+          ${x.exercises.map(e=>`<div class="ex-row"><span>${e.name}</span><span>${e.v}</span></div>`).join('')}
+        </div>
+        <div class="card-controls">
+          <button class="small logBtn" data-id="${x.id}">Log this as done today</button>
+          <div class="rpe-row">RPE <select class="rpeSelect" data-id="${x.id}">
+            <option value="">–</option>
+            ${[1,2,3,4,5].map(v=>`<option value="${v}">${v}</option>`).join('')}
+          </select></div>
+        </div>
+        <textarea placeholder="Optional note" class="noteInput" data-id="${x.id}"></textarea>
+      </div>
+    `;
+    card.querySelector('.wcard-top').onclick = ()=>{
+      openCardId = openCardId===x.id ? null : x.id;
+      render();
+    };
+    el.appendChild(card);
+  });
+
+  el.querySelectorAll('.logBtn').forEach(btn=>{
+    btn.onclick = (e)=>{
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const found = findLibraryWorkout(id);
+      const rpeSel = el.querySelector(`.rpeSelect[data-id="${id}"]`);
+      const noteInput = el.querySelector(`.noteInput[data-id="${id}"]`);
+      state.history.push({
+        id,
+        date: new Date().toISOString(),
+        rpe: rpeSel.value || null,
+        note: noteInput.value || '',
+      });
+      saveState();
+      showToast(`Logged: ${found.workout.title}`);
+      render();
+    };
+  });
+}
+function renderHistoryList(){
+  const el = document.getElementById('historyList');
+  const relevant = state.history.filter(h=>{
+    const f = findLibraryWorkout(h.id);
+    return f && f.discipline === 'bike';
+  });
+  if(!relevant.length){
+    el.innerHTML = '<div class="empty">Nothing logged yet — mark a ride done on the Schedule, or log one above.</div>';
+    return;
+  }
+  const recent = [...relevant].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,10);
+  el.innerHTML = recent.map(h=>{
+    const f = findLibraryWorkout(h.id);
+    const title = f ? f.workout.title : h.id;
+    const d = new Date(h.date);
+    const dateLbl = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    return `<div class="history-item">
+      <div class="meta">${dateLbl}${h.planWorkoutId ? ' · via weekly plan' : ' · logged directly'}</div>
+      <div style="font-size:13px;">${title}${h.rpe?' · RPE '+h.rpe:''}${h.note?' — '+h.note:''}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- HR ZONES (KARVONEN) ---------- */
+function hrZoneDefs(resting, max){
+  const hrr = max - resting;
+  const at = pct => Math.round(resting + hrr*pct);
+  return [
+    {id:'recovery', label:'Zone 1 – Recovery', low: at(0.50), high: at(0.60),
+      note:'Active recovery spins. Very light, no purpose beyond turning the legs over.'},
+    {id:'endurance', label:'Zone 2 – Endurance', low: at(0.60), high: at(0.70),
+      note:'Base-phase target — nearly every easy spin and long ride right now.'},
+    {id:'tempo', label:'Zone 3 – Tempo', low: at(0.70), high: at(0.80),
+      note:'Steady/benchmark efforts. Some drift here on climbs during Zone 2 rides is normal — not a target to chase yet.'},
+    {id:'threshold', label:'Zone 4 – Threshold', low: at(0.80), high: at(0.90), future:true,
+      note:'Future quality work — HR still applies here since outdoor structured work is hill-repeat based, not power-controlled.'},
+    {id:'vo2max', label:'Zone 5 – VO2max', low: at(0.90), high: null, future:true,
+      note:'Future quality work, highest-intensity outdoor efforts.'},
+  ];
+}
+function renderHrInputs(){
+  document.getElementById('in-resting').value = state.bikeZones.restingHR;
+  document.getElementById('in-maxhr').value = state.bikeZones.maxHR;
+}
+function renderHrResult(){
+  const hrr = state.bikeZones.maxHR - state.bikeZones.restingHR;
+  document.getElementById('hrrNum').textContent = hrr;
+  document.getElementById('hrrFormula').textContent = BIKE_HR_DEFAULTS.note;
+}
+function renderHrZones(){
+  const zones = hrZoneDefs(state.bikeZones.restingHR, state.bikeZones.maxHR);
+  const el = document.getElementById('hrZoneGrid');
+  el.innerHTML = '';
+  zones.forEach(z=>{
+    const card = document.createElement('div');
+    card.className = 'zone-card'+(z.future?' future':'');
+    card.innerHTML = `
+      <div class="zone-top">
+        <div class="zone-title">${z.label}</div>
+        <div class="zone-hr">${z.high==null ? z.low+'+ bpm' : z.low+'–'+z.high+' bpm'}</div>
+      </div>
+      <div class="zone-note">${z.note}</div>
+      ${z.future ? `<div style="margin-top:8px;"><span class="tag-future">future block</span></div>` : ''}
+    `;
+    el.appendChild(card);
+  });
+}
+
+/* ---------- FTP & POWER ZONES (COGGAN) ---------- */
+function powerZoneDefs(ftp){
+  if(!ftp) return null;
+  const at = pct => Math.round(ftp*pct);
+  return [
+    {id:'active_recovery', label:'Zone 1 – Active Recovery', low: 0, high: at(0.55),
+      note:'Very light spinning, well below any training stimulus.'},
+    {id:'endurance', label:'Zone 2 – Endurance', low: at(0.55)+1, high: at(0.75),
+      note:'ERG-mode easy spins and recovery rides live here.'},
+    {id:'tempo', label:'Zone 3 – Tempo', low: at(0.76), high: at(0.90),
+      note:'Sweet spot work sits at the top of this range and into Zone 4 — future block.', future:true},
+    {id:'threshold', label:'Zone 4 – Threshold', low: at(0.91), high: at(1.05), future:true,
+      note:'Threshold interval sessions on Zwift — future block, once FTP is confirmed by a real test.'},
+    {id:'vo2max', label:'Zone 5 – VO2max', low: at(1.06), high: at(1.20), future:true,
+      note:'VO2max interval sessions on Zwift — future block.'},
+    {id:'anaerobic', label:'Zone 6 – Anaerobic Capacity', low: at(1.21), high: at(1.50), future:true,
+      note:'Short, very hard repeats. Not relevant to base or early quality phase work.'},
+    {id:'neuromuscular', label:'Zone 7 – Neuromuscular Power', low: at(1.51), high: null, future:true,
+      note:'Sprint-duration efforts only. Power-only zone — HR lags too far behind to mean anything here.'},
+  ];
+}
+function renderFtpInputs(){
+  document.getElementById('in-ftp').value = state.bikeZones.ftp ?? '';
+  document.getElementById('in-weight').value = state.bikeZones.bodyWeightKg ?? '';
+}
+function renderFtpResult(){
+  document.getElementById('ftpNum').textContent = state.bikeZones.ftp ? state.bikeZones.ftp : '—';
+  if(!state.bikeZones.ftp){
+    document.getElementById('ftpFormula').innerHTML =
+      `No FTP on record yet. Do a Ramp Test on Zwift (Workouts → FTP Tests) and log the result below — that's the fastest way to get a real number instead of guessing from HR alone.`;
+  } else {
+    const wkg = state.bikeZones.bodyWeightKg ? (state.bikeZones.ftp/state.bikeZones.bodyWeightKg).toFixed(2) : null;
+    document.getElementById('ftpFormula').innerHTML =
+      `<b style="color:var(--white)">${state.bikeZones.ftp}W</b>${wkg ? ` · ${wkg} W/kg` : ' · add body weight above for W/kg'}`;
+  }
+}
+function renderPowerZones(){
+  const el = document.getElementById('powerZoneGrid');
+  const zones = powerZoneDefs(state.bikeZones.ftp);
+  if(!zones){
+    el.innerHTML = '<div class="empty">Set an FTP above (or log a test below) to see your power zones.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  zones.forEach(z=>{
+    const card = document.createElement('div');
+    card.className = 'zone-card'+(z.future?' future':'');
+    card.innerHTML = `
+      <div class="zone-top">
+        <div class="zone-title">${z.label}</div>
+        <div class="zone-hr">${z.high==null ? z.low+'W+' : z.low+'–'+z.high+'W'}</div>
+      </div>
+      <div class="zone-note">${z.note}</div>
+      ${z.future ? `<div style="margin-top:8px;"><span class="tag-future">future block</span></div>` : ''}
+    `;
+    el.appendChild(card);
+  });
+}
+
+/* ---------- QUICK REFERENCE ---------- */
+function renderQuickRef(){
+  const hrZones = hrZoneDefs(state.bikeZones.restingHR, state.bikeZones.maxHR);
+  const powerZones = powerZoneDefs(state.bikeZones.ftp);
+  const el = document.getElementById('quickRefTable');
+  const rows = [
+    ['Recovery', hrZones[0], powerZones ? powerZones[0] : null],
+    ['Endurance', hrZones[1], powerZones ? powerZones[1] : null],
+    ['Tempo', hrZones[2], powerZones ? powerZones[2] : null],
+    ['Threshold', hrZones[3], powerZones ? powerZones[3] : null],
+    ['VO2max', hrZones[4], powerZones ? powerZones[4] : null],
+    ['Anaerobic Capacity', null, powerZones ? powerZones[5] : null],
+    ['Neuromuscular Power', null, powerZones ? powerZones[6] : null],
+  ];
+  let html = `<tr><th>Zone</th><th>Heart Rate</th><th>Power (FTP-based)</th></tr>`;
+  rows.forEach(([name, hr, pw])=>{
+    const hrText = hr ? (hr.high==null ? hr.low+'+ bpm' : hr.low+'–'+hr.high+' bpm') : '—';
+    const pwText = pw ? (pw.high==null ? pw.low+'W+' : pw.low+'–'+pw.high+'W') : (powerZones ? '—' : 'set FTP above');
+    html += `<tr><td class="zname">${name}</td><td class="zhr">${hrText}</td><td class="zwatt">${pwText}</td></tr>`;
+  });
+  el.innerHTML = html;
+}
+
+/* ---------- LOG FORM ---------- */
+function updateEntryLabel(){
+  const type = document.getElementById('entry-type').value;
+  const label = document.getElementById('entry-power-label');
+  if(type==='twenty_min'){
+    label.textContent = 'Average power over the 20-min test (W)';
+  } else if(type==='manual'){
+    label.textContent = 'FTP (W) — enter directly';
+  } else {
+    label.textContent = 'Last full completed minute’s power (W)';
+  }
+  updateEntryPreview();
+}
+function computeFtpFromEntry(type, raw){
+  if(!raw) return null;
+  if(type==='twenty_min') return Math.round(raw*0.95);
+  if(type==='manual') return Math.round(raw);
+  return Math.round(raw*0.75); // ramp + ramp_lite
+}
+function updateEntryPreview(){
+  const type = document.getElementById('entry-type').value;
+  const raw = Number(document.getElementById('entry-power').value);
+  const el = document.getElementById('entryPreview');
+  if(!raw){ el.textContent = ''; return; }
+  const ftp = computeFtpFromEntry(type, raw);
+  if(type==='manual'){
+    el.innerHTML = `Will set FTP to <b style="color:var(--white)">${ftp}W</b> directly.`;
+  } else {
+    const pct = type==='twenty_min' ? '95%' : '75%';
+    el.innerHTML = `${pct} of ${raw}W = <b style="color:var(--white)">${ftp}W</b> FTP`;
+  }
+}
+function renderLogForm(){
+  if(!document.getElementById('entry-date').value){
+    document.getElementById('entry-date').value = new Date().toISOString().slice(0,10);
+  }
+  updateEntryLabel();
+}
+
+/* ---------- FTP TREND ---------- */
+function renderFtpTrend(){
+  const el = document.getElementById('ftpTrendList');
+  const tests = [...state.bikeZones.ftpTests].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(!tests.length){
+    el.innerHTML = '<div class="empty">No FTP tests logged yet — run a Ramp Test on Zwift and log it above to start tracking trend.</div>';
+    return;
+  }
+  const typeLabel = {ramp:'Ramp Test', ramp_lite:'Ramp Test Lite', twenty_min:'20-Minute Test', manual:'Manual/zFTP'};
+  let html = '';
+  tests.forEach((t,i)=>{
+    let deltaHtml = '';
+    if(i>0){
+      const delta = t.computedFtp - tests[i-1].computedFtp;
+      if(delta > 0) deltaHtml = `<span class="delta-up">▲ +${delta}W</span>`;
+      else if(delta < 0) deltaHtml = `<span class="delta-down">▼ ${delta}W</span>`;
+      else deltaHtml = 'no change';
+    }
+    const d = new Date(t.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    html += `<div class="hist-item ftp-test">
+      <span class="l">${d} — ${t.computedFtp}W (${typeLabel[t.type]})${t.note?' — '+t.note:''}</span>
+      <span class="r">${deltaHtml}</span>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function render(){
+  renderAbout();
+  renderVenueRow();
+  renderRecommendation();
+  renderGrid();
+  renderHistoryList();
+  renderHrInputs();
+  renderHrResult();
+  renderHrZones();
+  renderFtpInputs();
+  renderFtpResult();
+  renderPowerZones();
+  renderQuickRef();
+  renderLogForm();
+  renderFtpTrend();
+}
+
+/* ---------- EVENTS ---------- */
+document.getElementById('saveHrBtn').onclick = ()=>{
+  state.bikeZones.restingHR = Number(document.getElementById('in-resting').value) || state.bikeZones.restingHR;
+  state.bikeZones.maxHR = Number(document.getElementById('in-maxhr').value) || state.bikeZones.maxHR;
+  saveState();
+  render();
+  showToast('HR zones saved');
+};
+document.getElementById('saveFtpBtn').onclick = ()=>{
+  const ftpVal = document.getElementById('in-ftp').value;
+  state.bikeZones.ftp = ftpVal ? Number(ftpVal) : null;
+  const wVal = document.getElementById('in-weight').value;
+  state.bikeZones.bodyWeightKg = wVal ? Number(wVal) : null;
+  saveState();
+  render();
+  showToast('FTP saved');
+};
+document.getElementById('entry-type').onchange = updateEntryLabel;
+document.getElementById('entry-power').oninput = updateEntryPreview;
+document.getElementById('logEntryBtn').onclick = ()=>{
+  const type = document.getElementById('entry-type').value;
+  const date = document.getElementById('entry-date').value || new Date().toISOString().slice(0,10);
+  const raw = Number(document.getElementById('entry-power').value);
+  const note = document.getElementById('entry-note').value;
+
+  if(!raw){
+    showToast('Enter a power number to log this test');
+    return;
+  }
+  const computedFtp = computeFtpFromEntry(type, raw);
+
+  state.bikeZones.ftpTests.push({
+    id: 'ftp'+Date.now(),
+    date, type, rawInput: raw, computedFtp, note,
+  });
+  state.bikeZones.ftp = computedFtp; // most recent test becomes current FTP
+  saveState();
+
+  document.getElementById('entry-power').value = '';
+  document.getElementById('entry-note').value = '';
+
+  render();
+  showToast(`FTP updated to ${computedFtp}W`);
+};
+
+/* ---------- INIT ---------- */
+(function init(){
+  renderTriNav('bike', '../');
+  state = triLoadState();
+  const params = new URLSearchParams(location.search);
+  highlightId = params.get('highlight');
+  if(highlightId){
+    const found = BIKE_LIBRARY.find(x=>x.id===highlightId);
+    if(found){ bikeVenue = 'all'; openCardId = highlightId; }
+  }
+  render();
+  if(highlightId){
+    document.getElementById('libcard-'+highlightId)?.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+})();
+</script>
+</body>
+</html>

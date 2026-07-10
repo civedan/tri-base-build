@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strength & Core Library — Base Build</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/theme.css">
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="tri-nav" id="triNav"></nav>
+
+  <header>
+    <div class="eyebrow">Personal · Base Build Companion</div>
+    <h1>Strength & Core Library</h1>
+    <p class="subline">Lower body, upper body & core, and quick core add-ons — rotation-aware so the same movement focus doesn't stack back-to-back.</p>
+  </header>
+
+  <div class="about" id="aboutBlock"></div>
+
+  <div class="lib-tabs" id="libTabs"></div>
+  <div class="rec-card" id="libRecCard"></div>
+  <div class="workout-grid" id="libGrid"></div>
+
+  <div class="summary-card">
+    <h3>Recent history</h3>
+    <div id="historyList"></div>
+  </div>
+
+  <div class="footer-note">Saved automatically in this browser (localStorage), shared with every other page on this site.</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../shared/storage.js"></script>
+<script src="../data/strength-library.js"></script>
+<script src="../data/run-library.js"></script>
+<script src="../data/bike-library.js"></script>
+<script src="../data/swim-library.js"></script>
+<script src="../data/yoga-library.js"></script>
+<script src="../shared/nav.js"></script>
+<script>
+const DISCIPLINE_LIB = {run:RUN_LIBRARY, bike:BIKE_LIBRARY, swim:SWIM_LIBRARY, yoga:YOGA_LIBRARY};
+
+let state = null;
+let libActiveTab = 'lower';
+let openCardId = null;
+let highlightId = null;
+
+function saveState(){
+  if(!triSaveState(state)) showToast('Save failed — try again');
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------- SHARED ROTATION HELPERS (identical logic to index.html / all library pages) ---------- */
+function findLibraryWorkout(id){
+  for(const cat of Object.keys(LIBRARY)){
+    const found = LIBRARY[cat].find(x=>x.id===id);
+    if(found) return {category:cat, discipline:'strength', workout:found};
+  }
+  for(const disc of Object.keys(DISCIPLINE_LIB)){
+    const found = DISCIPLINE_LIB[disc].find(x=>x.id===id);
+    if(found) return {category:null, discipline:disc, workout:found};
+  }
+  return null;
+}
+function daysSince(iso){
+  if(!iso) return Infinity;
+  const then = new Date(iso);
+  const now = new Date();
+  return Math.floor((now - then) / (1000*60*60*24));
+}
+function lastDoneFor(id){
+  const entries = state.history.filter(h=>h.id===id);
+  if(!entries.length) return null;
+  return entries.reduce((a,b)=> new Date(a.date) > new Date(b.date) ? a : b);
+}
+function recentFocusTags(n=2){
+  const recent = [...state.history].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,n);
+  const tags = new Set();
+  recent.forEach(h=>{
+    const found = findLibraryWorkout(h.id);
+    if(found) found.workout.focus.forEach(t=>tags.add(t));
+  });
+  return tags;
+}
+function recommend(list){
+  const avoidTags = recentFocusTags(2);
+  let best = null, bestScore = -Infinity;
+  list.forEach(x=>{
+    const last = lastDoneFor(x.id);
+    const gap = last ? daysSince(last.date) : 999;
+    let overlap = x.focus.filter(t=>avoidTags.has(t)).length;
+    const score = gap - (overlap * 4);
+    if(score > bestScore){ bestScore = score; best = x; }
+  });
+  return best;
+}
+function recommendReason(x){
+  const last = lastDoneFor(x.id);
+  if(!last) return `You haven't done this one yet — good chance to add it into the rotation.`;
+  const gap = daysSince(last.date);
+  const avoidTags = recentFocusTags(2);
+  const overlap = x.focus.filter(t=>avoidTags.has(t));
+  if(overlap.length === 0 && gap >= 7){
+    return `It's been ${gap} day${gap===1?'':'s'} since this one, and it doesn't repeat what you did most recently — good variety pick.`;
+  }
+  if(gap >= 7) return `It's been ${gap} day${gap===1?'':'s'} since you did this one — due for a repeat.`;
+  return `Least recently used option in this category (${gap} day${gap===1?'':'s'} ago) that still fits.`;
+}
+
+/* ---------- RENDER ---------- */
+function render(){
+  renderAbout();
+  renderTabs();
+  renderRecommendation();
+  renderGrid();
+  renderHistoryList();
+}
+
+function renderAbout(){
+  const cat = LIB_CATEGORIES.find(c=>c.id===libActiveTab);
+  document.getElementById('aboutBlock').innerHTML =
+    `<b>${cat.label}:</b> ${cat.blurb}<br><br><b>Rotation:</b> the recommendation avoids repeating whatever focus area you hit in your last couple of logged sessions — across every discipline, not just strength — so similar sessions don't stack back-to-back.<br><br><b>Two ways to use it:</b> swap a workout directly onto a strength day on the <a href="../index.html" class="lib-link">Schedule</a>, or log one here on the fly if you did something that wasn't on the plan. Either way it counts toward the shared history that drives recommendations everywhere.`;
+}
+
+function renderTabs(){
+  const el = document.getElementById('libTabs');
+  el.innerHTML = '';
+  LIB_CATEGORIES.forEach(cat=>{
+    const btn = document.createElement('div');
+    btn.className = 'lib-tab'+(cat.id===libActiveTab?' active':'');
+    const doneCount = state.history.filter(h=>{
+      const f = findLibraryWorkout(h.id);
+      return f && f.category === cat.id;
+    }).length;
+    btn.innerHTML = `${cat.icon} ${cat.label} <span class="cnt">${doneCount>0?'· '+doneCount+' logged':''}</span>`;
+    btn.onclick = ()=>{ libActiveTab = cat.id; openCardId = null; render(); };
+    el.appendChild(btn);
+  });
+}
+
+function renderRecommendation(){
+  const list = LIBRARY[libActiveTab];
+  const cat = LIB_CATEGORIES.find(c=>c.id===libActiveTab);
+  if(!list.length){ document.getElementById('libRecCard').innerHTML=''; return; }
+  const pick = recommend(list);
+  const reason = recommendReason(pick);
+  document.getElementById('libRecCard').innerHTML = `
+    <div class="rec-eyebrow">Recommended for ${cat.label}</div>
+    <div class="rec-title">${pick.title}</div>
+    <div class="rec-why">${reason}</div>
+    <div class="rec-meta"><span><b>${pick.duration} min</b></span><span>${pick.equipment}</span></div>
+    <button class="small" id="jump-${pick.id}">Show this workout</button>
+  `;
+  document.getElementById(`jump-${pick.id}`).onclick = ()=>{
+    openCardId = pick.id;
+    render();
+    document.getElementById('libcard-'+pick.id)?.scrollIntoView({behavior:'smooth', block:'center'});
+  };
+}
+
+function renderGrid(){
+  const el = document.getElementById('libGrid');
+  el.innerHTML = '';
+  LIBRARY[libActiveTab].forEach(x=>{
+    const last = lastDoneFor(x.id);
+    const card = document.createElement('div');
+    card.className = 'wcard'+(openCardId===x.id?' open':'')+(highlightId===x.id?' highlight':'');
+    card.id = 'libcard-'+x.id;
+    card.innerHTML = `
+      <div class="wcard-top">
+        <div>
+          <div class="wcard-title">${x.title}</div>
+          <div class="wcard-meta">${x.equipment}</div>
+        </div>
+        <div class="wcard-dur">${x.duration} min</div>
+      </div>
+      <div class="tag-row">${x.focus.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      <div class="last-done">${last ? 'Last done '+daysSince(last.date)+' day'+(daysSince(last.date)===1?'':'s')+' ago'+(last.rpe?' · RPE '+last.rpe:'') : 'Not logged yet'}</div>
+      <div class="wcard-detail">
+        <div class="blurb">${x.blurb}</div>
+        <div class="ex-list">
+          ${x.exercises.map(e=>`<div class="ex-row"><span>${e.name}</span><span>${e.v}</span></div>`).join('')}
+        </div>
+        <div class="card-controls">
+          <button class="small logBtn" data-id="${x.id}">Log this as done today</button>
+          <div class="rpe-row">RPE <select class="rpeSelect" data-id="${x.id}">
+            <option value="">–</option>
+            ${[1,2,3,4,5].map(v=>`<option value="${v}">${v}</option>`).join('')}
+          </select></div>
+        </div>
+        <textarea placeholder="Optional note (e.g. felt tight in left hip)" class="noteInput" data-id="${x.id}"></textarea>
+      </div>
+    `;
+    card.querySelector('.wcard-top').onclick = ()=>{
+      openCardId = openCardId===x.id ? null : x.id;
+      render();
+    };
+    el.appendChild(card);
+  });
+
+  el.querySelectorAll('.logBtn').forEach(btn=>{
+    btn.onclick = (e)=>{
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const found = findLibraryWorkout(id);
+      const rpeSel = el.querySelector(`.rpeSelect[data-id="${id}"]`);
+      const noteInput = el.querySelector(`.noteInput[data-id="${id}"]`);
+      state.history.push({
+        id,
+        date: new Date().toISOString(),
+        rpe: rpeSel.value || null,
+        note: noteInput.value || '',
+      });
+      saveState();
+      showToast(`Logged: ${found.workout.title}`);
+      render();
+    };
+  });
+}
+
+function renderHistoryList(){
+  const el = document.getElementById('historyList');
+  const relevant = state.history.filter(h=>{
+    const f = findLibraryWorkout(h.id);
+    return f && f.discipline === 'strength';
+  });
+  if(!relevant.length){
+    el.innerHTML = '<div class="empty">Nothing logged yet — mark a strength day done on the Schedule, or log one above, to start building history.</div>';
+    return;
+  }
+  const recent = [...relevant].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,10);
+  el.innerHTML = recent.map(h=>{
+    const f = findLibraryWorkout(h.id);
+    const title = f ? f.workout.title : h.id;
+    const d = new Date(h.date);
+    const dateLbl = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    return `<div class="history-item">
+      <div class="meta">${dateLbl}${h.planWorkoutId ? ' · via weekly plan' : ' · logged directly'}</div>
+      <div style="font-size:13px;">${title}${h.rpe?' · RPE '+h.rpe:''}${h.note?' — '+h.note:''}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- INIT ---------- */
+(function init(){
+  renderTriNav('strength', '../');
+  state = triLoadState();
+  const params = new URLSearchParams(location.search);
+  highlightId = params.get('highlight');
+  if(highlightId){
+    const f = findLibraryWorkout(highlightId);
+    if(f && f.discipline==='strength' && f.category){
+      libActiveTab = f.category;
+      openCardId = highlightId;
+    }
+  }
+  render();
+  if(highlightId){
+    document.getElementById('libcard-'+highlightId)?.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+})();
+</script>
+</body>
+</html>

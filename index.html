@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Base Build — 12 Week Return to Tri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/theme.css">
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="tri-nav" id="triNav"></nav>
+
+  <header>
+    <div class="eyebrow">Personal · Base Build</div>
+    <h1>Return to Tri — 12 Week Base Phase</h1>
+    <p class="subline">Running first, layering in bike and swim, building toward an Olympic-distance season down the road.</p>
+
+    <div class="top-row">
+      <div class="field">
+        <label for="startDate">Week 1 starts</label>
+        <input type="date" id="startDate">
+      </div>
+      <button class="ghost small" id="applyStartDate">Set start date</button>
+      <div style="flex:1"></div>
+      <button class="ghost small" id="resetBtn">Reset plan</button>
+    </div>
+  </header>
+
+  <div class="view-tabs" id="viewTabs">
+    <div class="view-tab" data-view="plan">📅 Training Plan</div>
+    <div class="view-tab" data-view="dashboard">📊 Dashboard</div>
+  </div>
+
+  <!-- ===================== PLAN VIEW ===================== -->
+  <div id="planView">
+
+    <div class="about" id="aboutBlock"></div>
+
+    <div class="progress-card" id="progressCard"></div>
+
+    <div class="orbit-wrap">
+      <div class="orbit-line"></div>
+      <div class="orbit" id="orbitNav"></div>
+    </div>
+
+    <div class="week-head">
+      <div>
+        <div class="phase-tag" id="phaseTag"></div>
+        <h2 id="weekTitle"></h2>
+        <div class="week-dates" id="weekDates"></div>
+      </div>
+      <div class="week-actions">
+        <button class="ghost small" id="exportBtn">Export this week</button>
+      </div>
+    </div>
+
+    <div id="daysContainer"></div>
+
+    <div class="summary-card">
+      <h3>This week, by discipline</h3>
+      <div class="disc-rows" id="discRows"></div>
+    </div>
+
+    <div class="checkin-card">
+      <h3>Weekly check-in</h3>
+      <div class="desc">Tell me how the week actually felt. I'll use it to adjust next week — not just add more, sometimes to hold or pull back.</div>
+      <div class="grid2">
+        <div class="field-row">
+          <label>Sleep this week</label>
+          <select id="ci-sleep">
+            <option value="poor">Poor</option>
+            <option value="rough" selected>Rough in places</option>
+            <option value="good">Good</option>
+            <option value="great">Great</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Life / work stress</label>
+          <select id="ci-stress">
+            <option value="low">Low</option>
+            <option value="moderate" selected>Moderate</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Soreness or niggles</label>
+          <select id="ci-soreness">
+            <option value="none" selected>None</option>
+            <option value="mild">Mild, nothing concerning</option>
+            <option value="moderate">Moderate, noticeable</option>
+            <option value="significant">Significant / sharp / persistent</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Where, if anything (optional)</label>
+          <input type="text" id="ci-where" placeholder="e.g. right knee, lower back">
+        </div>
+      </div>
+      <div class="field-row">
+        <label>Anything else worth knowing about this week?</label>
+        <textarea id="ci-notes" placeholder="Missed a session, felt great on the bike, work trip next week, whatever's relevant..."></textarea>
+      </div>
+      <button id="checkinBtn">Save check-in for next week</button>
+      <div id="checkinResults"></div>
+      <div class="history" id="checkinHistory"></div>
+    </div>
+
+  </div>
+
+  <!-- ===================== DASHBOARD VIEW ===================== -->
+  <div id="dashboardView" style="display:none;">
+    <div class="dash-grid">
+      <div class="dash-card">
+        <h3>Discipline adherence</h3>
+        <div id="dashAdherence"></div>
+      </div>
+      <div class="dash-card">
+        <h3>Weekly volume trend</h3>
+        <div id="dashVolume"></div>
+      </div>
+      <div class="dash-card">
+        <h3>Zone &amp; retest status</h3>
+        <div id="dashZones"></div>
+      </div>
+      <div class="dash-card">
+        <h3>Next phase</h3>
+        <div id="dashPhase"></div>
+      </div>
+      <div class="dash-card" style="grid-column:1/-1;">
+        <h3>Coaching flags history</h3>
+        <div id="dashFlags"></div>
+      </div>
+      <div class="dash-card" style="grid-column:1/-1;">
+        <h3>Recent activity across all disciplines</h3>
+        <div id="dashActivity"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">Saved automatically in this browser (localStorage) · Coaching AI is not available on this static site</div>
+</div>
+
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <button class="modal-close ghost small" id="closeExport">Close</button>
+    <h3>Export — <span id="exportWeekLabel"></span></h3>
+    <p style="font-size:12px;color:var(--muted);margin-top:-6px;">Apple Fitness+ custom plans don't accept file imports — you'll need to tap this in manually. The calendar file below is the closest thing to a one-click push, and will show up on your phone and watch as scheduled events.</p>
+    <pre class="export-text" id="exportText"></pre>
+    <div class="modal-actions">
+      <button id="copyExportBtn">Copy text</button>
+      <button class="ghost" id="downloadIcsBtn">Download calendar file (.ics)</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <button class="modal-close ghost small" id="closeEdit">Close</button>
+    <h3>Edit session</h3>
+    <div class="field-row"><label>Day</label>
+      <select id="edit-day">
+        <option>Mon</option><option>Tue</option><option>Wed</option><option>Thu</option>
+        <option>Fri</option><option>Sat</option><option>Sun</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Discipline</label>
+      <select id="edit-discipline">
+        <option value="run">Run</option><option value="bike">Bike</option><option value="swim">Swim</option>
+        <option value="strength">Strength</option><option value="yoga">Yoga</option><option value="rest">Rest</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Title</label><input type="text" id="edit-title"></div>
+    <div class="field-row"><label>Duration (minutes)</label><input type="text" id="edit-duration"></div>
+    <div class="field-row"><label>Notes to self</label><textarea id="edit-detail"></textarea></div>
+    <div class="modal-actions">
+      <button id="saveEditBtn">Save</button>
+      <button class="ghost" id="cancelEditBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="swapModal">
+  <div class="modal">
+    <button class="modal-close ghost small" id="closeSwap">Close</button>
+    <h3>Swap workout</h3>
+    <div class="modal-sub" id="swapSub"></div>
+    <div class="lib-tabs" id="swapTabs"></div>
+    <div class="venue-filter-row" id="swapVenueRow"></div>
+    <div class="rec-card" id="swapRecCard"></div>
+    <div class="workout-grid" id="swapGrid"></div>
+    <div class="modal-actions">
+      <button class="ghost small" id="revertDefaultBtn">Revert to planned default</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/storage.js"></script>
+<script src="data/strength-library.js"></script>
+<script src="data/run-library.js"></script>
+<script src="data/bike-library.js"></script>
+<script src="data/swim-library.js"></script>
+<script src="data/yoga-library.js"></script>
+<script src="data/zones.js"></script>
+<script src="shared/nav.js"></script>
+<script>
+const DISC_ICON = {run:'🏃',bike:'🚴',swim:'🏊',strength:'🏋️',yoga:'🧘',rest:'🌙'};
+const DISC_LABEL = {run:'Run',bike:'Bike',swim:'Swim',strength:'Strength',yoga:'Yoga',rest:'Rest'};
+const DAY_ORDER = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const PAGE_FOR_DISC = {run:'run', bike:'bike', swim:'swim', strength:'strength', yoga:'yoga'};
+const DISCIPLINE_LIB = {run:RUN_LIBRARY, bike:BIKE_LIBRARY, swim:SWIM_LIBRARY, yoga:YOGA_LIBRARY};
+
+function w(id,day,discipline,title,duration,detail,libraryId){
+  return {id,day,discipline,title,duration,detail,completed:false,rpe:null,note:'',libraryId:libraryId||null};
+}
+
+function defaultPlan(){
+  return [
+    {n:1, phase:'Foundation', recovery:false, workouts:[
+      w('w1a','Mon','yoga','Full-body yoga','45','Slow flow through hips, hamstrings, and shoulders. Monday is your permanent rest-from-training day — yoga is the one thing that lives here.'),
+      w('w1b','Tue','run','Easy run','20','Easy, conversational pace, run straight through — no walk breaks needed. At an easy 6:30-7:00/km effort that is roughly 3km, matching where you already are.'),
+      w('w1c','Tue','strength','Lower body strength','30','Squats, hip hinge pattern, glute bridges, single-leg balance work. Moderate load, controlled tempo.'),
+      w('w1d','Wed','rest','Rest',0,'Full rest.'),
+      w('w1e','Thu','rest','Rest',0,'Full rest.'),
+      w('w1f','Fri','rest','Rest',0,'Full rest.'),
+      w('w1g','Sat','run','Long run','25','Same easy effort as Tuesday, just a little more time on feet. Saturday is your long-run day from week one — it stays here all the way through.'),
+      w('w1h','Sat','strength','Upper body & core','30','Push-pull upper body work, planks, anti-rotation core drills, scapular stability.'),
+      w('w1i','Sun','rest','Rest',0,'Full rest.'),
+    ]},
+    {n:2, phase:'Foundation', recovery:false, workouts:[
+      w('w2a','Mon','yoga','Full-body yoga','50','Same flow. Notice what feels tighter than usual — that is useful information, not something to push through.'),
+      w('w2b','Tue','run','Easy run','22','Easy pace, straight through.'),
+      w('w2c','Tue','strength','Lower body strength','30','Same pattern as last week, small load or rep increase if it felt manageable.'),
+      w('w2d','Wed','rest','Rest',0,'Full rest.'),
+      w('w2e','Thu','rest','Rest',0,'Full rest.'),
+      w('w2f','Fri','rest','Rest',0,'Full rest.'),
+      w('w2g','Sat','run','Long run','28','Easy pace, a bit more time than Tuesday.'),
+      w('w2h','Sat','strength','Upper body & core','30','Same pattern as last week.'),
+      w('w2i','Sun','rest','Rest',0,'Full rest.'),
+    ]},
+    {n:3, phase:'Foundation + Bike', recovery:false, workouts:[
+      w('w3a','Mon','yoga','Full-body yoga','50','Same flow.'),
+      w('w3b','Tue','run','Easy run','22','Easy pace, straight through.'),
+      w('w3c','Tue','strength','Lower body strength','30','Same pattern, moderate load.'),
+      w('w3d','Wed','bike','Easy spin','20','First bike back. Flat or rolling terrain, easy spin — cadence over power, just turn the legs over.'),
+      w('w3e','Thu','rest','Rest',0,'Full rest.'),
+      w('w3f','Fri','rest','Rest',0,'Full rest.'),
+      w('w3g','Sat','run','Long run','30','Easy pace, your longest run yet.'),
+      w('w3h','Sat','strength','Upper body & core','35','Same pattern as prior weeks.'),
+      w('w3i','Sun','rest','Rest',0,'Full rest.'),
+    ]},
+    {n:4, phase:'Foundation + Bike', recovery:true, workouts:[
+      w('w4a','Mon','yoga','Full-body yoga','40','Shorter flow, same focus areas.'),
+      w('w4b','Tue','run','Easy run','18','Recovery week — shorter and easier across the board. This is by design, not a setback.'),
+      w('w4c','Tue','strength','Lower body strength','25','Lighter load, same movement patterns.'),
+      w('w4d','Wed','bike','Easy spin','15','Short and easy.'),
+      w('w4e','Thu','rest','Rest',0,'Full rest.'),
+      w('w4f','Fri','rest','Rest',0,'Full rest.'),
+      w('w4g','Sat','run','Long run','22','Easy pace, dialed back for the recovery week.'),
+      w('w4h','Sat','strength','Upper body & core','25','Lighter session.'),
+      w('w4i','Sun','rest','Rest',0,'Full rest.'),
+    ]},
+    {n:5, phase:'Three-Discipline Base', recovery:false, workouts:[
+      w('w5a','Mon','yoga','Full-body yoga','55','Same flow.'),
+      w('w5b','Tue','run','Easy run','25','Easy pace, straight through.'),
+      w('w5c','Tue','strength','Lower body strength','30','Standard pattern.'),
+      w('w5d','Wed','bike','Easy spin','25','Easy, flat terrain.'),
+      w('w5e','Thu','rest','Rest',0,'Full rest.'),
+      w('w5f','Fri','swim','Technique swim','15','First swim back. Short, broken into sets with rest between. Form over speed — this is about feel for the water again, not fitness.'),
+      w('w5g','Sat','run','Long run','33','Easy pace, back to building after the recovery week.'),
+      w('w5h','Sat','strength','Upper body & core','35','Standard pattern.'),
+      w('w5i','Sun','bike','Easy ride','25','First ride here — Sunday becomes your long-bike day going forward, starting modest for now.'),
+    ]},
+    {n:6, phase:'Three-Discipline Base', recovery:false, workouts:[
+      w('w6a','Mon','yoga','Full-body yoga','55','Same flow.'),
+      w('w6b','Tue','run','Easy run','27','Easy pace.'),
+      w('w6c','Tue','strength','Lower body strength','30','Standard pattern.'),
+      w('w6d','Wed','bike','Easy spin','28','Easy, flat terrain.'),
+      w('w6e','Thu','rest','Rest',0,'Full rest.'),
+      w('w6f','Fri','swim','Technique swim','18','Still broken into sets, slightly more total distance than last week.'),
+      w('w6g','Sat','run','Long run','36','Easy pace.'),
+      w('w6h','Sat','strength','Upper body & core','35','Standard pattern.'),
+      w('w6i','Sun','bike','Easy ride','30','Building toward your Sunday long ride.'),
+    ]},
+    {n:7, phase:'Three-Discipline Base', recovery:false, workouts:[
+      w('w7a','Mon','yoga','Full-body yoga','60','Same flow.'),
+      w('w7b','Tue','run','Easy run','28','Easy pace.'),
+      w('w7c','Tue','strength','Lower body strength','35','Standard pattern.'),
+      w('w7d','Wed','bike','Easy spin','30','Easy, flat terrain.'),
+      w('w7e','Thu','rest','Rest',0,'Full rest.'),
+      w('w7f','Fri','swim','Building swim','20','More continuous than broken now. Smooth, relaxed strokes.'),
+      w('w7g','Sat','run','Long run','40','Your longest run of the plan so far. Still easy — resist the urge to push pace just because the duration is up.'),
+      w('w7h','Sat','strength','Upper body & core','35','Standard pattern.'),
+      w('w7i','Sun','bike','Steady ride','35','Longest ride of the plan so far, steady effort.'),
+    ]},
+    {n:8, phase:'Three-Discipline Base', recovery:true, workouts:[
+      w('w8a','Mon','yoga','Full-body yoga','45','Shorter flow.'),
+      w('w8b','Tue','run','Easy run','22','Recovery week. Shorter, easier across the board.'),
+      w('w8c','Tue','strength','Lower body strength','25','Lighter load.'),
+      w('w8d','Wed','bike','Easy spin','20','Easy.'),
+      w('w8e','Thu','rest','Rest',0,'Full rest.'),
+      w('w8f','Fri','swim','Technique swim','15','Shorter, form-focused.'),
+      w('w8g','Sat','run','Long run','28','Easy pace, dialed back.'),
+      w('w8h','Sat','strength','Upper body & core','25','Lighter session.'),
+      w('w8i','Sun','bike','Easy ride','25','Shorter than the last couple Sundays. This week is about absorbing the last block, not adding to it.'),
+    ]},
+    {n:9, phase:'Volume Build', recovery:false, workouts:[
+      w('w9a','Mon','yoga','Full-body yoga','55','Same flow.'),
+      w('w9b','Tue','run','Easy run','30','Easy pace.'),
+      w('w9c','Tue','strength','Lower body strength','30','Standard pattern.'),
+      w('w9d','Wed','bike','Easy spin','30','Easy, flat terrain.'),
+      w('w9e','Thu','run','Easy run','25','Second easy run of the week joins here — this is Thursdays permanent slot going forward.'),
+      w('w9f','Thu','strength','Upper body & core','30','Strength has moved here from Saturday, now that Saturday is carrying real long-run volume and deserves to stay protected.'),
+      w('w9g','Fri','bike','Easy spin','25','Second easy ride of the week.'),
+      w('w9h','Fri','swim','Building swim','20','Paired with the Friday ride. Continuous swim, relaxed pace.'),
+      w('w9i','Sat','run','Long run','45','Long run only from here — no strength attached, so the day is just about the run and the recovery after it.'),
+      w('w9j','Sun','bike','Long ride','40','Your long ride for the week.'),
+    ]},
+    {n:10, phase:'Volume Build', recovery:false, workouts:[
+      w('w10a','Mon','yoga','Full-body yoga','55','Same flow.'),
+      w('w10b','Tue','run','Easy run','32','Easy pace.'),
+      w('w10c','Tue','strength','Lower body strength','30','Standard pattern.'),
+      w('w10d','Wed','bike','Easy spin','35','Easy, flat terrain.'),
+      w('w10e','Thu','run','Easy run','27','Easy pace.'),
+      w('w10f','Thu','strength','Upper body & core','30','Standard pattern.'),
+      w('w10g','Fri','bike','Easy spin','30','Easy, flat terrain.'),
+      w('w10h','Fri','swim','Building swim','22','Continuous swim, a bit more distance than last week.'),
+      w('w10i','Sat','run','Long run','50','Easy effort, longest run of the plan so far.'),
+      w('w10j','Sun','bike','Long ride','45','Steady effort, longest ride of the plan so far.'),
+    ]},
+    {n:11, phase:'Volume Build', recovery:false, workouts:[
+      w('w11a','Mon','yoga','Full-body yoga','60','Same flow.'),
+      w('w11b','Tue','run','Easy run','33','Easy pace.'),
+      w('w11c','Tue','strength','Lower body strength','35','Standard pattern.'),
+      w('w11d','Wed','bike','Easy spin','38','Easy, flat terrain.'),
+      w('w11e','Thu','run','Easy run','28','Easy pace.'),
+      w('w11f','Thu','strength','Upper body & core','35','Standard pattern.'),
+      w('w11g','Fri','bike','Easy spin','32','Easy, flat terrain.'),
+      w('w11h','Fri','swim','Building swim','25','Continuous swim, relaxed and smooth.'),
+      w('w11i','Sat','run','Long run','55','Peak long run of the base phase. Still easy — this is about time on feet, not pace.'),
+      w('w11j','Sun','bike','Long ride','50','Peak ride of the base phase, steady effort throughout.'),
+    ]},
+    {n:12, phase:'Consolidation', recovery:false, workouts:[
+      w('w12a','Mon','yoga','Full-body yoga','55','Same flow.'),
+      w('w12b','Tue','run','Easy run','25','Easy pace, lighter than recent weeks.'),
+      w('w12c','Tue','strength','Lower body strength (light)','25','Lighter than usual, movement quality over load this week.'),
+      w('w12d','Wed','bike','Easy spin','25','Easy, flat terrain.'),
+      w('w12e','Thu','run','Easy run','20','Easy pace, lighter.'),
+      w('w12f','Thu','strength','Upper body & core (light)','25','Lighter session.'),
+      w('w12g','Fri','bike','Easy spin','25','Easy, flat terrain.'),
+      w('w12h','Fri','swim','Benchmark swim','20','Steady continuous swim at a pace you could hold for the whole distance — a marker, not a test.'),
+      w('w12i','Sat','run','Benchmark run','30','Warm up easy, then run at a comfortably hard, sustainable effort — not an all-out race. Cool down easy.'),
+      w('w12j','Sun','bike','Benchmark ride','35','Steady effort throughout, slightly harder than your normal long-ride pace.'),
+    ]},
+  ];
+}
+
+let state = null;
+let currentWeek = 1;
+let editingCardId = null;
+let currentView = 'plan';
+let swapTargetId = null;
+let swapDiscipline = 'strength';
+let swapActiveTab = 'lower';
+let swapBikeVenue = 'all';
+let swapSwimCategory = 'all';
+
+function nextMonday(){
+  const d = new Date();
+  const day = d.getDay();
+  const diff = (8 - day) % 7 || 7;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0,10);
+}
+
+function loadAppState(){
+  const s = triLoadState();
+  if(!s.weeks) s.weeks = defaultPlan();
+  if(!s.profile) s.profile = { startDate: nextMonday() };
+  s.weeks.forEach(wk=>wk.workouts.forEach(x=>{ if(x.libraryId===undefined) x.libraryId=null; }));
+  return s;
+}
+function saveState(){
+  if(!triSaveState(state)) showToast('Save failed — try again');
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function addDays(iso, days){
+  const d = new Date(iso+'T00:00:00');
+  d.setDate(d.getDate()+days);
+  return d;
+}
+
+function weekStart(n){
+  return addDays(state.profile.startDate, (n-1)*7);
+}
+
+function fmtDate(d){
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+function dateForDay(weekN, dayAbbr){
+  const idx = DAY_ORDER.indexOf(dayAbbr);
+  return addDays(weekStart(weekN).toISOString().slice(0,10), idx);
+}
+
+function findWeek(n){ return state.weeks.find(x=>x.n===n); }
+function findWorkout(id){
+  for(const wk of state.weeks){
+    const found = wk.workouts.find(x=>x.id===id);
+    if(found) return {week:wk, workout:found};
+  }
+  return null;
+}
+
+/* ---------- LIBRARY HELPERS (shared by Dashboard activity + Swap modal) ---------- */
+function findLibraryWorkout(id){
+  for(const cat of Object.keys(LIBRARY)){
+    const found = LIBRARY[cat].find(x=>x.id===id);
+    if(found) return {category:cat, discipline:'strength', workout:found};
+  }
+  for(const disc of Object.keys(DISCIPLINE_LIB)){
+    const found = DISCIPLINE_LIB[disc].find(x=>x.id===id);
+    if(found) return {category:null, discipline:disc, workout:found};
+  }
+  return null;
+}
+function daysSince(iso){
+  if(!iso) return Infinity;
+  const then = new Date(iso);
+  const now = new Date();
+  return Math.floor((now - then) / (1000*60*60*24));
+}
+function lastDoneFor(id){
+  const entries = state.history.filter(h=>h.id===id);
+  if(!entries.length) return null;
+  return entries.reduce((a,b)=> new Date(a.date) > new Date(b.date) ? a : b);
+}
+function recentFocusTags(n=2){
+  const recent = [...state.history].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,n);
+  const tags = new Set();
+  recent.forEach(h=>{
+    const found = findLibraryWorkout(h.id);
+    if(found) found.workout.focus.forEach(t=>tags.add(t));
+  });
+  return tags;
+}
+function recommend(list){
+  const avoidTags = recentFocusTags(2);
+  let best = null, bestScore = -Infinity;
+  list.forEach(x=>{
+    const last = lastDoneFor(x.id);
+    const gap = last ? daysSince(last.date) : 999;
+    let overlap = x.focus.filter(t=>avoidTags.has(t)).length;
+    const score = gap - (overlap * 4);
+    if(score > bestScore){ bestScore = score; best = x; }
+  });
+  return best;
+}
+function recommendReason(x){
+  const last = lastDoneFor(x.id);
+  if(!last) return `You haven't done this one yet — good chance to add it into the rotation.`;
+  const gap = daysSince(last.date);
+  const avoidTags = recentFocusTags(2);
+  const overlap = x.focus.filter(t=>avoidTags.has(t));
+  if(overlap.length === 0 && gap >= 7){
+    return `It's been ${gap} day${gap===1?'':'s'} since this one, and it doesn't repeat what you did most recently — good variety pick.`;
+  }
+  if(gap >= 7) return `It's been ${gap} day${gap===1?'':'s'} since you did this one — due for a repeat.`;
+  return `Least recently used option in this category (${gap} day${gap===1?'':'s'} ago) that still fits.`;
+}
+function categoryForWorkout(workout){
+  if(workout.discipline !== 'strength'){
+    return workout.discipline;
+  }
+  if(workout.libraryId){
+    const f = findLibraryWorkout(workout.libraryId);
+    if(f && f.discipline==='strength') return f.category;
+  }
+  const t = (workout.title||'').toLowerCase();
+  if(t.includes('lower')) return 'lower';
+  if(t.includes('upper')) return 'upper';
+  return 'lower';
+}
+function formatDetailFromLibrary(x){
+  const exLines = x.exercises.map(e=>`${e.name} — ${e.v}`).join('; ');
+  return `${x.blurb} (${exLines})`;
+}
+function libraryHrefFor(workout){
+  const page = PAGE_FOR_DISC[workout.discipline];
+  if(!page) return null;
+  let href = `pages/${page}.html`;
+  if(workout.libraryId) href += `?highlight=${encodeURIComponent(workout.libraryId)}`;
+  return href;
+}
+
+/* ---------- SWIM CSS / PACE HELPERS (needed for dashboard zone status) ---------- */
+function formatSwimTime(sec){
+  if(sec==null || !isFinite(sec)) return '—';
+  sec = Math.round(sec);
+  const m = Math.floor(sec/60);
+  const s = sec%60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+function formatSwimPace(sec){
+  if(sec==null || !isFinite(sec)) return '—';
+  return `${formatSwimTime(sec)}/100m`;
+}
+function latestSwimTest(){
+  if(!state.swimTests.length) return null;
+  return [...state.swimTests].sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+}
+
+/* ---------- DASHBOARD ---------- */
+function renderDashboard(){
+  renderDashAdherence();
+  renderDashVolume();
+  renderDashZones();
+  renderDashPhase();
+  renderDashFlags();
+  renderDashActivity();
+}
+
+function renderDashAdherence(){
+  const discs = ['run','bike','swim','strength','yoga'];
+  const totals = {};
+  discs.forEach(d=>{ totals[d] = {planned:0, done:0}; });
+  state.weeks.forEach(wk=>{
+    wk.workouts.forEach(x=>{
+      if(!totals[x.discipline]) return;
+      totals[x.discipline].planned += Number(x.duration||0);
+      if(x.completed) totals[x.discipline].done += Number(x.duration||0);
+    });
+  });
+  const html = discs.filter(d=>totals[d].planned>0).map(d=>{
+    const pct = Math.round((totals[d].done/totals[d].planned)*100);
+    return `<div class="adh-row">
+      <div class="adh-label"><span>${DISC_ICON[d]} ${DISC_LABEL[d]}</span><span>${totals[d].done}/${totals[d].planned} min · ${pct}%</span></div>
+      <div class="adh-track"><div class="adh-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('dashAdherence').innerHTML = html || '<div class="empty">No volume planned yet.</div>';
+}
+
+function renderDashVolume(){
+  const maxPlanned = Math.max(...state.weeks.map(wk=>totalMinutes(wk)), 1);
+  const html = state.weeks.map(wk=>{
+    const planned = totalMinutes(wk);
+    const done = wk.workouts.filter(x=>x.completed).reduce((s,x)=>s+Number(x.duration||0),0);
+    const plannedH = Math.max((planned/maxPlanned)*100, 2);
+    const doneH = planned>0 ? Math.min((done/planned)*100, 100) : 0;
+    const rpes = wk.workouts.filter(x=>x.completed && x.rpe).map(x=>Number(x.rpe));
+    const avgRpe = rpes.length ? (rpes.reduce((a,b)=>a+b,0)/rpes.length).toFixed(1) : '';
+    return `<div class="vol-bar-wrap">
+      <div class="vol-rpe">${avgRpe}</div>
+      <div class="vol-bar-track">
+        <div class="vol-bar" style="height:${plannedH}%;">
+          <div class="vol-bar-fill" style="height:${doneH}%;"></div>
+        </div>
+      </div>
+      <div class="vol-lbl">${wk.n}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('dashVolume').innerHTML = `<div class="vol-chart">${html}</div>
+    <div style="color:var(--muted);font-size:10px;margin-top:8px;">Bar height = planned volume · fill = completed · number above = avg RPE</div>`;
+}
+
+function renderDashZones(){
+  const weeksComplete = state.weeks.filter(wk=>wk.workouts.every(x=>x.completed || x.discipline==='rest')).length;
+  const runStatus = weeksComplete>=6
+    ? 'Retest due — run a fresh 5K or 10K time trial to update VDOT and paces.'
+    : `Current paces from VDOT ${RUN_VDOT_ZONES.vdot} (5K: ${RUN_VDOT_ZONES.test5k}, ${RUN_VDOT_ZONES.testDate}). Retest around week 6–8 — ${6-weeksComplete} week(s) of buffer left on that estimate.${state.runZones.maf ? ` MAF number on record: ${state.runZones.maf} bpm.` : ''}`;
+  const bike = state.bikeZones;
+  const bikeStatus = bike.ftp
+    ? `HR zones from resting ${bike.restingHR} / max ${bike.maxHR} bpm. FTP on record: ${bike.ftp}W — power zones active (see Bike page).`
+    : `Zones estimated from resting HR ${bike.restingHR} / max HR ~${bike.maxHR} (not lab or field tested). No FTP test logged yet — power zones unavailable until one is (see Bike page).`;
+  const latestTest = latestSwimTest();
+  const swimStatus = latestTest
+    ? `CSS ${formatSwimPace(latestTest.css)} from a test on ${new Date(latestTest.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})} — real zones now, not estimated. Retest every 6–8 weeks to keep it current.`
+    : 'Pace zones estimated from a single "typical pace" data point. A 400m + 200m CSS test would sharpen this — not urgent while swim stays technique-focused.';
+  document.getElementById('dashZones').innerHTML = `
+    <div class="zone-card"><div class="disc">🏃 Run</div><div class="status">${runStatus}</div></div>
+    <div class="zone-card"><div class="disc">🚴 Bike</div><div class="status">${bikeStatus}</div></div>
+    <div class="zone-card"><div class="disc">🏊 Swim</div><div class="status">${swimStatus}</div></div>
+  `;
+}
+
+function renderDashPhase(){
+  const weeksLeft = 12 - currentWeek;
+  let html;
+  if(weeksLeft > 0){
+    html = `<div class="big">${weeksLeft} week${weeksLeft===1?'':'s'}</div><div style="margin-top:4px;">until the Early Quality Phase starts.</div>
+      <div style="margin-top:10px;">That phase adds one threshold run per week, light structured bike work, and a swim CSS test — paces get recalculated from fresh test results, not carried over from this block.</div>`;
+  } else {
+    html = `<div class="big">Base block complete</div>
+      <div style="margin-top:10px;">Time to move into the Early Quality Phase: a fresh 5K time trial, an FTP test if structured bike work is next, and a swim CSS test — then set new paces/zones from those numbers rather than reusing July's estimates.</div>`;
+  }
+  document.getElementById('dashPhase').innerHTML = `<div class="phase-box">${html}</div>`;
+}
+
+function renderDashFlags(){
+  const flagged = state.checkins.filter(c=>c.flags && c.flags.length);
+  if(!flagged.length){
+    document.getElementById('dashFlags').innerHTML = '<div class="empty">No flags raised yet — good sign.</div>';
+    return;
+  }
+  document.getElementById('dashFlags').innerHTML = [...flagged].reverse().map(c=>`
+    <div class="flag-log-item">
+      <div class="meta">Week ${c.weekNumber} · ${new Date(c.timestamp).toLocaleDateString()}</div>
+      ${c.flags.map(f=>`<div class="txt">⚠️ ${f}</div>`).join('')}
+    </div>
+  `).join('');
+}
+
+function renderDashActivity(){
+  const el = document.getElementById('dashActivity');
+  if(!state.history.length){
+    el.innerHTML = '<div class="empty">Nothing logged yet — mark a workout done, swap one in, or log a session on any discipline page to start building history.</div>';
+    return;
+  }
+  const recent = [...state.history].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,10);
+  el.innerHTML = recent.map(h=>{
+    const f = findLibraryWorkout(h.id);
+    const title = f ? f.workout.title : h.id;
+    const d = new Date(h.date);
+    const dateLbl = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    return `<div class="history-item">
+      <div class="meta">${dateLbl}${h.planWorkoutId ? ' · via weekly plan' : ' · logged directly'}</div>
+      <div style="font-size:13px;">${title}${h.rpe?' · RPE '+h.rpe:''}${h.note?' — '+h.note:''}</div>
+    </div>`;
+  }).join('');
+}
+
+function render(){
+  renderAbout();
+  renderProgress();
+  renderOrbit();
+  renderWeek();
+  renderHistory();
+  renderDashboard();
+}
+
+function switchView(v){
+  currentView = v;
+  document.getElementById('planView').style.display = v==='plan' ? '' : 'none';
+  document.getElementById('dashboardView').style.display = v==='dashboard' ? '' : 'none';
+  document.querySelectorAll('.view-tab').forEach(t=>{
+    t.classList.toggle('active', t.dataset.view===v);
+  });
+}
+
+function renderAbout(){
+  document.getElementById('aboutBlock').innerHTML =
+    `<b>Your fixed schedule:</b> Monday is always off from training — yoga lives there instead. Saturday carries your run from week one and grows into your long run; Sunday is phased in as your ride and becomes your long bike. Wednesday's easy spin joins week 3, Friday's swim and Sunday's ride join week 5, and Thursday's run joins week 9 once volume calls for a third run day — landing on your target pattern of Tuesday/Thursday/Saturday runs and Wednesday/Friday/Sunday rides. Strength sits on Tuesday and Saturday while those are still short, then shifts to Tuesday and Thursday once Saturday becomes your protected long run in week 9.<br><br><b>On the numbers:</b> run durations are built around an easy 6:30&ndash;7:00/km effort, not round numbers — so early weeks are shorter than a generic plan would show, on purpose. Every fourth week eases off before the next build block.<br><br><b>Every discipline has its own page now:</b> Run, Bike, Swim, Strength, and Yoga each live on their own page (see the nav above) with the full workout library, rotation-aware recommendations, and — for Run and Bike — interactive pace/HR/power zone calculators. Every strength/run/bike/swim/yoga day here has a "Swap" option and a link straight to its library entry.`;
+}
+
+function totalMinutes(wk){
+  return wk.workouts.reduce((s,x)=>s+Number(x.duration||0),0);
+}
+
+function renderProgress(){
+  const totalWeeks = state.weeks.length;
+  const weeksComplete = state.weeks.filter(wk=>wk.workouts.every(x=>x.completed || x.discipline==='rest')).length;
+  const allMinutesPlanned = state.weeks.reduce((s,wk)=>s+totalMinutes(wk),0);
+  const allMinutesDone = state.weeks.reduce((s,wk)=>s+wk.workouts.filter(x=>x.completed).reduce((a,x)=>a+Number(x.duration||0),0),0);
+  const pct = allMinutesPlanned ? Math.round((allMinutesDone/allMinutesPlanned)*100) : 0;
+  document.getElementById('progressCard').innerHTML = `
+    <div class="stat"><div class="num">${weeksComplete}/${totalWeeks}</div><div class="lbl">Weeks complete</div></div>
+    <div class="stat"><div class="num">${(allMinutesDone/60).toFixed(1)}h</div><div class="lbl">Hours trained</div></div>
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+    <div class="stat" style="text-align:right;"><div class="num">${pct}%</div><div class="lbl">Of planned volume</div></div>
+  `;
+}
+
+function renderOrbit(){
+  const el = document.getElementById('orbitNav');
+  el.innerHTML = '';
+  state.weeks.forEach(wk=>{
+    const done = wk.workouts.every(x=>x.completed || x.discipline==='rest');
+    const div = document.createElement('div');
+    div.className = 'stop'+(wk.n===currentWeek?' active':'')+(wk.recovery?' recovery':'')+(done?' done':'');
+    div.innerHTML = `<div class="dot">${wk.n}</div><div class="wk-lbl">${wk.recovery?'Recover':'Wk '+wk.n}</div>`;
+    div.onclick = ()=>{ currentWeek = wk.n; render(); };
+    el.appendChild(div);
+  });
+}
+
+function renderWeek(){
+  const wk = findWeek(currentWeek);
+  document.getElementById('phaseTag').textContent = wk.phase + (wk.recovery ? ' · Recovery' : '');
+  document.getElementById('weekTitle').textContent = 'Week '+wk.n;
+  const start = weekStart(wk.n);
+  const end = addDays(start.toISOString().slice(0,10),6);
+  document.getElementById('weekDates').textContent = fmtDate(start)+' – '+fmtDate(end);
+
+  const byDay = {};
+  DAY_ORDER.forEach(d=>byDay[d]=[]);
+  wk.workouts.forEach(x=>byDay[x.day].push(x));
+
+  const container = document.getElementById('daysContainer');
+  container.innerHTML = '';
+  DAY_ORDER.forEach(day=>{
+    const items = byDay[day];
+    if(!items.length) return;
+    const block = document.createElement('div');
+    block.className = 'day-block';
+    const dateLabel = fmtDate(dateForDay(wk.n, day));
+    block.innerHTML = `<div class="day-title">${day} · ${dateLabel}</div>`;
+    items.forEach(x=>{
+      const card = document.createElement('div');
+      card.className = 'card'+(x.completed?' complete':'');
+      const libBadge = x.libraryId ? `<span class="lib-tag">From library</span>` : '';
+      const libHref = libraryHrefFor(x);
+      card.innerHTML = `
+        <div class="disc-badge">${DISC_ICON[x.discipline]}</div>
+        <div class="card-body">
+          <div class="card-top">
+            <div class="card-title">${x.title}</div>
+            <div class="card-dur">${x.duration>0 ? x.duration+' min':''}</div>
+          </div>
+          <div class="card-detail">${x.detail}</div>
+          ${libBadge}
+          <div class="card-controls">
+            ${x.discipline!=='rest' ? `<label class="checkbox-lbl"><input type="checkbox" data-id="${x.id}" class="doneCheck" ${x.completed?'checked':''}> Done</label>` : ''}
+            ${x.completed ? `<div class="rpe-row">RPE <select data-id="${x.id}" class="rpeSelect">
+                <option value="">–</option>
+                ${[1,2,3,4,5].map(v=>`<option value="${v}" ${x.rpe==v?'selected':''}>${v}</option>`).join('')}
+              </select></div>` : ''}
+            <button class="ghost small editBtn" data-id="${x.id}">Edit</button>
+            ${x.discipline!=='rest' ? `<button class="ghost small swapBtn" data-id="${x.id}">Swap workout</button>` : ''}
+            ${libHref ? `<a class="lib-link" href="${libHref}">Open ${DISC_LABEL[x.discipline]} library →</a>` : ''}
+          </div>
+        </div>
+      `;
+      block.appendChild(card);
+    });
+    container.appendChild(block);
+  });
+
+  // discipline summary
+  const totals = {};
+  wk.workouts.forEach(x=>{ totals[x.discipline] = (totals[x.discipline]||0) + Number(x.duration||0); });
+  const rows = Object.keys(totals).filter(k=>totals[k]>0).map(k=>
+    `<div class="disc-row"><span>${DISC_ICON[k]} ${DISC_LABEL[k]}</span><span>${totals[k]} min</span></div>`
+  ).join('');
+  document.getElementById('discRows').innerHTML = rows || '<div class="disc-row"><span>Rest week</span><span>0 min</span></div>';
+
+  // wire events
+  container.querySelectorAll('.doneCheck').forEach(cb=>{
+    cb.onchange = (e)=>{
+      const {workout} = findWorkout(e.target.dataset.id);
+      workout.completed = e.target.checked;
+      if(!workout.completed){
+        workout.rpe = null;
+      } else if(workout.libraryId){
+        state.history.push({
+          id: workout.libraryId,
+          date: new Date().toISOString(),
+          rpe: null,
+          note: '',
+          planWorkoutId: workout.id,
+        });
+      }
+      saveState();
+      render();
+    };
+  });
+  container.querySelectorAll('.rpeSelect').forEach(sel=>{
+    sel.onchange = (e)=>{
+      const {workout} = findWorkout(e.target.dataset.id);
+      workout.rpe = e.target.value || null;
+      // keep the matching history entry (if any) in sync
+      if(workout.libraryId){
+        const entry = [...state.history].reverse().find(h=>h.planWorkoutId===workout.id);
+        if(entry) entry.rpe = workout.rpe;
+      }
+      saveState();
+    };
+  });
+  container.querySelectorAll('.editBtn').forEach(btn=>{
+    btn.onclick = ()=> openEdit(btn.dataset.id);
+  });
+  container.querySelectorAll('.swapBtn').forEach(btn=>{
+    btn.onclick = ()=> openSwap(btn.dataset.id);
+  });
+}
+
+function openEdit(id){
+  const {workout} = findWorkout(id);
+  editingCardId = id;
+  document.getElementById('edit-day').value = workout.day;
+  document.getElementById('edit-discipline').value = workout.discipline;
+  document.getElementById('edit-title').value = workout.title;
+  document.getElementById('edit-duration').value = workout.duration;
+  document.getElementById('edit-detail').value = workout.detail;
+  document.getElementById('editModal').classList.add('open');
+}
+
+document.getElementById('saveEditBtn').onclick = ()=>{
+  const {workout} = findWorkout(editingCardId);
+  workout.day = document.getElementById('edit-day').value;
+  workout.discipline = document.getElementById('edit-discipline').value;
+  workout.title = document.getElementById('edit-title').value;
+  workout.duration = Number(document.getElementById('edit-duration').value)||0;
+  workout.detail = document.getElementById('edit-detail').value;
+  if(workout.discipline !== 'strength') workout.libraryId = null;
+  saveState();
+  document.getElementById('editModal').classList.remove('open');
+  render();
+  showToast('Session updated');
+};
+document.getElementById('cancelEditBtn').onclick = ()=> document.getElementById('editModal').classList.remove('open');
+document.getElementById('closeEdit').onclick = ()=> document.getElementById('editModal').classList.remove('open');
+
+/* ---------- SWAP MODAL ---------- */
+function openSwap(workoutId){
+  const {workout} = findWorkout(workoutId);
+  swapTargetId = workoutId;
+  swapDiscipline = workout.discipline;
+  swapBikeVenue = 'all';
+  swapSwimCategory = 'all';
+  if(swapDiscipline === 'strength'){
+    swapActiveTab = categoryForWorkout(workout);
+  } else {
+    swapActiveTab = swapDiscipline;
+  }
+  document.getElementById('swapSub').textContent = `Currently: ${workout.title} (${workout.duration} min) — pick a replacement below.`;
+  document.getElementById('swapModal').classList.add('open');
+  renderSwapTabs();
+  renderSwapFilterRow();
+  renderSwapRecommendation();
+  renderSwapGrid();
+}
+function getSwapList(){
+  if(swapDiscipline === 'strength') return LIBRARY[swapActiveTab];
+  let list = DISCIPLINE_LIB[swapDiscipline] || [];
+  if(swapDiscipline === 'bike' && swapBikeVenue !== 'all'){
+    list = list.filter(x=>x.venue===swapBikeVenue);
+  }
+  if(swapDiscipline === 'swim' && swapSwimCategory !== 'all'){
+    list = list.filter(x=>x.category===swapSwimCategory);
+  }
+  return list;
+}
+function renderSwapTabs(){
+  const el = document.getElementById('swapTabs');
+  el.innerHTML = '';
+  if(swapDiscipline !== 'strength') return;
+  LIB_CATEGORIES.forEach(cat=>{
+    const btn = document.createElement('div');
+    btn.className = 'lib-tab'+(cat.id===swapActiveTab?' active':'');
+    btn.innerHTML = `${cat.icon} ${cat.label}`;
+    btn.onclick = ()=>{ swapActiveTab = cat.id; renderSwapTabs(); renderSwapRecommendation(); renderSwapGrid(); };
+    el.appendChild(btn);
+  });
+}
+function renderFilterRow(containerId, options, active, onPick){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  options.forEach(([id,label])=>{
+    const btn = document.createElement('div');
+    btn.className = 'lib-tab'+(id===active?' active':'');
+    btn.textContent = label;
+    btn.onclick = ()=> onPick(id);
+    el.appendChild(btn);
+  });
+}
+function renderSwapFilterRow(){
+  const el = document.getElementById('swapVenueRow');
+  el.innerHTML = '';
+  if(swapDiscipline === 'bike'){
+    renderFilterRow('swapVenueRow', BIKE_VENUE_OPTIONS, swapBikeVenue, v=>{ swapBikeVenue=v; renderSwapRecommendation(); renderSwapGrid(); });
+  } else if(swapDiscipline === 'swim'){
+    renderFilterRow('swapVenueRow', SWIM_FILTER_OPTIONS, swapSwimCategory, v=>{ swapSwimCategory=v; renderSwapRecommendation(); renderSwapGrid(); });
+  }
+}
+function renderSwapRecommendation(){
+  const list = getSwapList();
+  if(!list.length){ document.getElementById('swapRecCard').innerHTML=''; return; }
+  const pick = recommend(list);
+  const reason = recommendReason(pick);
+  document.getElementById('swapRecCard').innerHTML = `
+    <div class="rec-eyebrow">Recommended</div>
+    <div class="rec-title">${pick.title}</div>
+    <div class="rec-why">${reason}</div>
+    <div class="rec-meta"><span><b>${pick.duration} min</b></span><span>${pick.equipment}</span></div>
+    <button class="small" id="swapUseRec">Use this one</button>
+  `;
+  document.getElementById('swapUseRec').onclick = ()=> applySwap(pick.id);
+}
+function renderSwapGrid(){
+  const el = document.getElementById('swapGrid');
+  el.innerHTML = '';
+  getSwapList().forEach(x=>{
+    const last = lastDoneFor(x.id);
+    const card = document.createElement('div');
+    card.className = 'wcard';
+    card.innerHTML = `
+      <div class="wcard-top">
+        <div>
+          <div class="wcard-title">${x.title}</div>
+          <div class="wcard-meta">${x.equipment}</div>
+        </div>
+        <div class="wcard-dur">${x.duration} min</div>
+      </div>
+      <div class="tag-row">${x.focus.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      <div class="blurb" style="margin-top:8px;">${x.blurb}</div>
+      <div class="ex-list" style="margin-top:8px;">
+        ${x.exercises.map(e=>`<div class="ex-row"><span>${e.name}</span><span>${e.v}</span></div>`).join('')}
+      </div>
+      <div class="last-done">${last ? 'Last done '+daysSince(last.date)+' day'+(daysSince(last.date)===1?'':'s')+' ago' : 'Not logged yet'}</div>
+      <div class="card-controls" style="margin-top:10px;">
+        <button class="small useBtn" data-id="${x.id}">Use this workout</button>
+      </div>
+    `;
+    card.querySelector('.useBtn').onclick = ()=> applySwap(x.id);
+    el.appendChild(card);
+  });
+}
+function applySwap(libId){
+  const {workout} = findWorkout(swapTargetId);
+  const found = findLibraryWorkout(libId);
+  if(!found) return;
+  const x = found.workout;
+  workout.title = x.title;
+  workout.duration = x.duration;
+  workout.detail = formatDetailFromLibrary(x);
+  workout.libraryId = x.id;
+  saveState();
+  document.getElementById('swapModal').classList.remove('open');
+  render();
+  showToast(`Swapped in: ${x.title}`);
+}
+document.getElementById('revertDefaultBtn').onclick = ()=>{
+  const fresh = defaultPlan();
+  let original = null;
+  for(const wk of fresh){
+    const f = wk.workouts.find(x=>x.id===swapTargetId);
+    if(f){ original = f; break; }
+  }
+  if(original){
+    const {workout} = findWorkout(swapTargetId);
+    workout.title = original.title;
+    workout.duration = original.duration;
+    workout.detail = original.detail;
+    workout.libraryId = null;
+    saveState();
+    render();
+    showToast('Reverted to planned default');
+  }
+  document.getElementById('swapModal').classList.remove('open');
+};
+document.getElementById('closeSwap').onclick = ()=> document.getElementById('swapModal').classList.remove('open');
+
+/* EXPORT */
+document.getElementById('exportBtn').onclick = ()=>{
+  const wk = findWeek(currentWeek);
+  document.getElementById('exportWeekLabel').textContent = 'Week '+wk.n;
+  let text = `WEEK ${wk.n} — ${wk.phase}\n`;
+  DAY_ORDER.forEach(day=>{
+    const items = wk.workouts.filter(x=>x.day===day);
+    if(!items.length) return;
+    const line = items.map(x=> x.discipline==='rest' ? 'Rest' : `${x.title} ${x.duration}min`).join(' + ');
+    text += `${day}: ${line}\n`;
+  });
+  document.getElementById('exportText').textContent = text;
+  document.getElementById('exportModal').classList.add('open');
+};
+document.getElementById('closeExport').onclick = ()=> document.getElementById('exportModal').classList.remove('open');
+document.getElementById('copyExportBtn').onclick = ()=>{
+  navigator.clipboard.writeText(document.getElementById('exportText').textContent);
+  showToast('Copied — paste into Apple Fitness+');
+};
+document.getElementById('downloadIcsBtn').onclick = ()=>{
+  const wk = findWeek(currentWeek);
+  let ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Base Build//Tri Plan//EN\n';
+  wk.workouts.forEach(x=>{
+    if(x.discipline==='rest') return;
+    const d = dateForDay(wk.n, x.day);
+    const dstr = d.toISOString().slice(0,10).replace(/-/g,'');
+    ics += `BEGIN:VEVENT\nUID:${x.id}@base-build\nDTSTART;VALUE=DATE:${dstr}\nSUMMARY:${x.title} — ${x.duration}min\nDESCRIPTION:${x.detail.replace(/\n/g,' ')}\nEND:VEVENT\n`;
+  });
+  ics += 'END:VCALENDAR';
+  const blob = new Blob([ics], {type:'text/calendar'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `week-${wk.n}-training.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+/* CHECK-IN (coaching AI stubbed — see README: no server-side API key on static Pages) */
+function renderHistory(){
+  const el = document.getElementById('checkinHistory');
+  if(!state.checkins.length){ el.innerHTML=''; return; }
+  el.innerHTML = '<div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px;">Past check-ins</div>' +
+    [...state.checkins].reverse().map(c=>`
+      <div class="history-item">
+        <div class="meta">Week ${c.weekNumber} · ${new Date(c.timestamp).toLocaleDateString()}</div>
+        <div style="font-size:13px;">${c.coachNote ? c.coachNote : '(no coaching note — saved feedback only)'}</div>
+      </div>
+    `).join('');
+}
+
+document.getElementById('checkinBtn').onclick = ()=>{
+  const resultsEl = document.getElementById('checkinResults');
+
+  const wk = findWeek(currentWeek);
+  const feedback = {
+    sleep: document.getElementById('ci-sleep').value,
+    stress: document.getElementById('ci-stress').value,
+    soreness: document.getElementById('ci-soreness').value,
+    where: document.getElementById('ci-where').value,
+    notes: document.getElementById('ci-notes').value,
+  };
+
+  const checkinRecord = { weekNumber: wk.n, feedback, timestamp: Date.now(), coachNote: '', flags: [] };
+  state.checkins.push(checkinRecord);
+  saveState();
+
+  resultsEl.innerHTML = `<div class="flag">Coaching AI isn't available on this static site — it needs a server to hold an API key, which GitHub Pages doesn't provide. Your check-in and feedback are saved below and feed the dashboard's adherence/volume numbers either way. Adjust next week's sessions yourself with the Edit button on any card.</div>`;
+  renderHistory();
+};
+
+/* RESET + START DATE */
+document.getElementById('resetBtn').onclick = ()=>{
+  if(!confirm('Reset the whole plan back to week 1 defaults? This clears completed workouts and check-in history. Your workout library history (all disciplines) is kept.')) return;
+  state = { weeks: defaultPlan(), checkins: [], history: state.history, swimTests: state.swimTests, profile: state.profile, runZones: state.runZones, bikeZones: state.bikeZones };
+  currentWeek = 1;
+  saveState();
+  render();
+  showToast('Plan reset');
+};
+document.getElementById('applyStartDate').onclick = ()=>{
+  state.profile.startDate = document.getElementById('startDate').value;
+  saveState();
+  render();
+  showToast('Start date updated');
+};
+
+/* VIEW TABS */
+document.querySelectorAll('.view-tab').forEach(t=>{
+  t.onclick = ()=> switchView(t.dataset.view);
+});
+
+/* INIT */
+(function init(){
+  renderTriNav('schedule', '');
+  state = loadAppState();
+  document.getElementById('startDate').value = state.profile.startDate;
+  switchView('plan');
+  render();
+})();
+</script>
+</body>
+</html>

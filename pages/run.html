@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Run Library & HR Zones — Base Build</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/theme.css">
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="tri-nav" id="triNav"></nav>
+
+  <header>
+    <div class="eyebrow">Personal · Base Build Companion</div>
+    <h1>Run Library & HR Zones</h1>
+    <p class="subline">Two pace systems, one page: VDOT gives pace targets for structured work later, MAF gives a heart-rate cap for the easy aerobic running that fills this whole base block.</p>
+  </header>
+
+  <div class="about" id="aboutBlock"></div>
+
+  <div class="rec-card" id="recCard"></div>
+  <div class="workout-grid" id="runGrid"></div>
+
+  <div class="summary-card">
+    <h3>Recent history</h3>
+    <div id="historyList"></div>
+  </div>
+
+  <!-- ============ VDOT PACE ZONES ============ -->
+  <div class="section">
+    <h2>Pace Zones — VDOT</h2>
+    <div class="sub" id="vdotSub"></div>
+    <div class="zone-grid" id="vdotZoneGrid"></div>
+  </div>
+
+  <!-- ============ MAF HEART RATE ZONES ============ -->
+  <div class="section">
+    <h2>Heart Rate Zones — Maffetone Method</h2>
+    <div class="sub">MAF = 180 − age, adjusted for training history/health. Used for capping effort on easy aerobic runs — a different signal than the VDOT pace table above.</div>
+    <div class="maf-card">
+      <div class="grid2">
+        <div class="field-row">
+          <label>Age</label>
+          <input type="number" id="in-age" min="10" max="100">
+        </div>
+        <div class="field-row">
+          <label>Training history / health category</label>
+          <select id="in-category">
+            <option value="issues">Recovering from illness/injury/surgery or on regular medication (−10)</option>
+            <option value="inconsistent">Inconsistent / newly returning / prone to injury, illness, or allergies (−5)</option>
+            <option value="consistent">Training consistently up to 2 years, no issues (no adjustment)</option>
+            <option value="advanced">Training consistently 2+ years, no issues, still improving (+5)</option>
+          </select>
+        </div>
+      </div>
+      <div class="maf-result">
+        <div>
+          <div class="maf-num" id="mafNum">—</div>
+          <div class="maf-lbl">MAF heart rate (bpm)</div>
+        </div>
+        <div class="maf-formula" id="mafFormula"></div>
+      </div>
+      <button id="saveMafBtn">Save</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>MAF Zone Table</h2>
+    <div class="sub">Zone 2 (Aerobic Base) is where the bulk of base-block running lives. Pace shown comes from your own logged entries once you have them.</div>
+    <div class="zone-grid" id="mafZoneGrid"></div>
+    <div id="insightBlock"></div>
+  </div>
+
+  <div class="section">
+    <h2>Log a Run or MAF Test</h2>
+    <div class="sub">Logging heart rate + pace here builds the per-zone pace averages above and tracks your MAF test trend over time.</div>
+    <div class="log-form">
+      <div class="grid3">
+        <div class="field-row">
+          <label>Entry type</label>
+          <select id="entry-type">
+            <option value="run">Regular run</option>
+            <option value="maf_test">MAF Test (run at exactly your MAF HR)</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Date</label>
+          <input type="date" id="entry-date">
+        </div>
+        <div class="field-row">
+          <label>Distance (km, optional)</label>
+          <input type="number" id="entry-dist" min="0" step="0.1" placeholder="e.g. 5">
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field-row">
+          <label>Average HR (bpm)</label>
+          <input type="number" id="entry-hr" min="60" max="230" placeholder="e.g. 140">
+        </div>
+        <div class="field-row">
+          <label>Average pace (m:ss per km)</label>
+          <input type="text" id="entry-pace" placeholder="e.g. 6:20">
+        </div>
+      </div>
+      <div class="field-row">
+        <label>Notes (optional)</label>
+        <input type="text" id="entry-note" placeholder="e.g. warm day, felt strong">
+      </div>
+      <button id="logEntryBtn">Log entry</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>MAF Test Trend</h2>
+    <div class="sub">Track how your pace at MAF HR moves over time as fitness returns.</div>
+    <div class="summary-card" id="mafTrendList"></div>
+  </div>
+
+  <div class="section">
+    <h2>Recent Log</h2>
+    <div class="summary-card" id="recentLogList"></div>
+  </div>
+
+  <div class="footer-note">Saved automatically in this browser (localStorage), shared with every other page on this site.</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../shared/storage.js"></script>
+<script src="../data/strength-library.js"></script>
+<script src="../data/run-library.js"></script>
+<script src="../data/bike-library.js"></script>
+<script src="../data/swim-library.js"></script>
+<script src="../data/yoga-library.js"></script>
+<script src="../data/zones.js"></script>
+<script src="../shared/nav.js"></script>
+<script>
+const DISCIPLINE_LIB = {run:RUN_LIBRARY, bike:BIKE_LIBRARY, swim:SWIM_LIBRARY, yoga:YOGA_LIBRARY};
+const CATEGORY_LABEL = {
+  issues: 'recovering from illness/injury/surgery or on regular medication (−10)',
+  inconsistent: 'inconsistent / newly returning / prone to injury, illness, or allergies (−5)',
+  consistent: 'training consistently up to 2 years, no issues (no adjustment)',
+  advanced: 'training consistently 2+ years, no issues, still improving (+5)',
+};
+const CATEGORY_ADJ = { issues:-10, inconsistent:-5, consistent:0, advanced:5 };
+
+let state = null;
+let openCardId = null;
+let highlightId = null;
+
+function saveState(){
+  if(!triSaveState(state)) showToast('Save failed — try again');
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------- SHARED ROTATION HELPERS ---------- */
+function findLibraryWorkout(id){
+  for(const cat of Object.keys(LIBRARY)){
+    const found = LIBRARY[cat].find(x=>x.id===id);
+    if(found) return {category:cat, discipline:'strength', workout:found};
+  }
+  for(const disc of Object.keys(DISCIPLINE_LIB)){
+    const found = DISCIPLINE_LIB[disc].find(x=>x.id===id);
+    if(found) return {category:null, discipline:disc, workout:found};
+  }
+  return null;
+}
+function daysSince(iso){
+  if(!iso) return Infinity;
+  const then = new Date(iso);
+  const now = new Date();
+  return Math.floor((now - then) / (1000*60*60*24));
+}
+function lastDoneFor(id){
+  const entries = state.history.filter(h=>h.id===id);
+  if(!entries.length) return null;
+  return entries.reduce((a,b)=> new Date(a.date) > new Date(b.date) ? a : b);
+}
+function recentFocusTags(n=2){
+  const recent = [...state.history].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,n);
+  const tags = new Set();
+  recent.forEach(h=>{
+    const found = findLibraryWorkout(h.id);
+    if(found) found.workout.focus.forEach(t=>tags.add(t));
+  });
+  return tags;
+}
+function recommend(list){
+  const avoidTags = recentFocusTags(2);
+  let best = null, bestScore = -Infinity;
+  list.forEach(x=>{
+    const last = lastDoneFor(x.id);
+    const gap = last ? daysSince(last.date) : 999;
+    let overlap = x.focus.filter(t=>avoidTags.has(t)).length;
+    const score = gap - (overlap * 4);
+    if(score > bestScore){ bestScore = score; best = x; }
+  });
+  return best;
+}
+function recommendReason(x){
+  const last = lastDoneFor(x.id);
+  if(!last) return `You haven't done this one yet — good chance to add it into the rotation.`;
+  const gap = daysSince(last.date);
+  const avoidTags = recentFocusTags(2);
+  const overlap = x.focus.filter(t=>avoidTags.has(t));
+  if(overlap.length === 0 && gap >= 7){
+    return `It's been ${gap} day${gap===1?'':'s'} since this one, and it doesn't repeat what you did most recently — good variety pick.`;
+  }
+  if(gap >= 7) return `It's been ${gap} day${gap===1?'':'s'} since you did this one — due for a repeat.`;
+  return `Least recently used option in this view (${gap} day${gap===1?'':'s'} ago) that still fits.`;
+}
+
+/* ---------- RUN LIBRARY GRID ---------- */
+function renderAbout(){
+  document.getElementById('aboutBlock').innerHTML =
+    `<b>What's here:</b> every run type in the plan — tap a card to see the structure. Easy and Long runs are usable now; Hill and Fartlek are outdoor substitutes for structured intervals; Threshold is future-block, gated on a fresh VDOT retest.<br><br><b>Rotation:</b> the recommendation avoids repeating whatever focus area you hit in your last couple of logged sessions across every discipline, so similar sessions don't stack back-to-back.<br><br><b>Two ways to use it:</b> swap a workout directly onto a run day on the <a href="../index.html" class="lib-link">Schedule</a>, or log one here on the fly.`;
+}
+function renderRecommendation(){
+  const el = document.getElementById('recCard');
+  if(!RUN_LIBRARY.length){ el.innerHTML=''; return; }
+  const pick = recommend(RUN_LIBRARY);
+  const reason = recommendReason(pick);
+  el.innerHTML = `
+    <div class="rec-eyebrow">Recommended</div>
+    <div class="rec-title">${pick.title}</div>
+    <div class="rec-why">${reason}</div>
+    <div class="rec-meta"><span><b>${pick.duration} min</b></span><span>${pick.equipment}</span></div>
+    <button class="small" id="jump-${pick.id}">Show this workout</button>
+  `;
+  document.getElementById(`jump-${pick.id}`).onclick = ()=>{
+    openCardId = pick.id;
+    render();
+    document.getElementById('libcard-'+pick.id)?.scrollIntoView({behavior:'smooth', block:'center'});
+  };
+}
+function renderGrid(){
+  const el = document.getElementById('runGrid');
+  el.innerHTML = '';
+  RUN_LIBRARY.forEach(x=>{
+    const last = lastDoneFor(x.id);
+    const card = document.createElement('div');
+    card.className = 'wcard'+(openCardId===x.id?' open':'')+(highlightId===x.id?' highlight':'');
+    card.id = 'libcard-'+x.id;
+    card.innerHTML = `
+      <div class="wcard-top">
+        <div>
+          <div class="wcard-title">${x.title}</div>
+          <div class="wcard-meta">${x.equipment}</div>
+        </div>
+        <div class="wcard-dur">${x.duration} min</div>
+      </div>
+      <div class="tag-row">${x.focus.map(t=>`<span class="${t==='future'?'tag-future':'tag'}">${t}</span>`).join('')}</div>
+      <div class="last-done">${last ? 'Last done '+daysSince(last.date)+' day'+(daysSince(last.date)===1?'':'s')+' ago'+(last.rpe?' · RPE '+last.rpe:'') : 'Not logged yet'}</div>
+      <div class="wcard-detail">
+        <div class="blurb">${x.blurb}</div>
+        <div class="ex-list">
+          ${x.exercises.map(e=>`<div class="ex-row"><span>${e.name}</span><span>${e.v}</span></div>`).join('')}
+        </div>
+        <div class="card-controls">
+          <button class="small logBtn" data-id="${x.id}">Log this as done today</button>
+          <div class="rpe-row">RPE <select class="rpeSelect" data-id="${x.id}">
+            <option value="">–</option>
+            ${[1,2,3,4,5].map(v=>`<option value="${v}">${v}</option>`).join('')}
+          </select></div>
+        </div>
+        <textarea placeholder="Optional note" class="noteInput" data-id="${x.id}"></textarea>
+      </div>
+    `;
+    card.querySelector('.wcard-top').onclick = ()=>{
+      openCardId = openCardId===x.id ? null : x.id;
+      render();
+    };
+    el.appendChild(card);
+  });
+
+  el.querySelectorAll('.logBtn').forEach(btn=>{
+    btn.onclick = (e)=>{
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const found = findLibraryWorkout(id);
+      const rpeSel = el.querySelector(`.rpeSelect[data-id="${id}"]`);
+      const noteInput = el.querySelector(`.noteInput[data-id="${id}"]`);
+      state.history.push({
+        id,
+        date: new Date().toISOString(),
+        rpe: rpeSel.value || null,
+        note: noteInput.value || '',
+      });
+      saveState();
+      showToast(`Logged: ${found.workout.title}`);
+      render();
+    };
+  });
+}
+function renderHistoryList(){
+  const el = document.getElementById('historyList');
+  const relevant = state.history.filter(h=>{
+    const f = findLibraryWorkout(h.id);
+    return f && f.discipline === 'run';
+  });
+  if(!relevant.length){
+    el.innerHTML = '<div class="empty">Nothing logged yet — mark a run done on the Schedule, or log one above.</div>';
+    return;
+  }
+  const recent = [...relevant].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,10);
+  el.innerHTML = recent.map(h=>{
+    const f = findLibraryWorkout(h.id);
+    const title = f ? f.workout.title : h.id;
+    const d = new Date(h.date);
+    const dateLbl = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    return `<div class="history-item">
+      <div class="meta">${dateLbl}${h.planWorkoutId ? ' · via weekly plan' : ' · logged directly'}</div>
+      <div style="font-size:13px;">${title}${h.rpe?' · RPE '+h.rpe:''}${h.note?' — '+h.note:''}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- VDOT PACE ZONES (static reference) ---------- */
+function renderVdotZones(){
+  document.getElementById('vdotSub').textContent =
+    `Derived from 5K time trial: ${RUN_VDOT_ZONES.test5k} (${RUN_VDOT_ZONES.testDate}), VDOT ${RUN_VDOT_ZONES.vdot}. ${RUN_VDOT_ZONES.rightNow}`;
+  const el = document.getElementById('vdotZoneGrid');
+  el.innerHTML = RUN_VDOT_ZONES.zones.map(z=>`
+    <div class="zone-card${z.future?' future':''}">
+      <div class="zone-top">
+        <div class="zone-title">${z.label}</div>
+        <div class="zone-hr">${z.pace}</div>
+      </div>
+      <div class="zone-note">${z.purpose}</div>
+      ${z.future ? `<div style="margin-top:8px;"><span class="tag-future">future block</span></div>` : ''}
+    </div>
+  `).join('') + `<div class="zone-note" style="margin-top:4px;">${RUN_VDOT_ZONES.retestNote}</div>`;
+}
+
+/* ---------- PACE HELPERS (MAF) ---------- */
+function parsePace(str){
+  if(!str) return null;
+  const m = String(str).trim().match(/^(\d{1,2}):([0-5]\d)$/);
+  if(!m) return null;
+  return parseInt(m[1],10)*60 + parseInt(m[2],10);
+}
+function formatPace(sec){
+  if(sec==null || !isFinite(sec)) return '—';
+  sec = Math.round(sec);
+  const m = Math.floor(sec/60);
+  const s = sec%60;
+  return `${m}:${String(s).padStart(2,'0')}/km`;
+}
+
+/* ---------- MAF CALC ---------- */
+function computeMaf(age, category){
+  return 180 - Number(age) + (CATEGORY_ADJ[category] ?? 0);
+}
+function zoneDefs(maf){
+  return [
+    {id:'recovery', label:'Zone 1 – Recovery', low: maf-20, high: maf-11, future:false,
+      note:'Very light effort — active recovery jogs and shakeouts.'},
+    {id:'aerobic', label:'Zone 2 – Aerobic Base (MAF Zone)', low: maf-10, high: maf, future:false,
+      note:'Where the bulk of base-block running lives. This is your Maffetone training zone.'},
+    {id:'tempo', label:'Zone 3 – Tempo / High Aerobic', low: maf+1, high: maf+5, future:false,
+      note:'Some drift above MAF on climbs or warm days is normal — a sign to ease off, not a target to chase.'},
+    {id:'threshold', label:'Zone 4 – Threshold', low: maf+6, high: maf+15, future:true,
+      note:'Future block — pace here comes from a VDOT retest, not HR data, once quality work starts.'},
+    {id:'vo2max', label:'Zone 5 – VO2max', low: maf+16, high: null, future:true,
+      note:'Future block — your highest-intensity zone, well beyond base-phase work.'},
+  ];
+}
+function entriesInZone(entries, zone){
+  return entries.filter(e=>{
+    if(e.hr == null) return false;
+    if(zone.high == null) return e.hr >= zone.low;
+    return e.hr >= zone.low && e.hr <= zone.high;
+  });
+}
+
+function renderMafInputs(){
+  document.getElementById('in-age').value = state.runZones.age;
+  document.getElementById('in-category').value = state.runZones.category;
+}
+function renderMafResult(){
+  const maf = computeMaf(state.runZones.age, state.runZones.category);
+  document.getElementById('mafNum').textContent = maf;
+  document.getElementById('mafFormula').innerHTML =
+    `180 − ${state.runZones.age} (age) ${CATEGORY_ADJ[state.runZones.category]>=0?'+':'−'} ${Math.abs(CATEGORY_ADJ[state.runZones.category])} (${CATEGORY_LABEL[state.runZones.category]}) = <b style="color:var(--white)">${maf} bpm</b>`;
+}
+function renderMafZones(){
+  const maf = state.runZones.maf ?? computeMaf(state.runZones.age, state.runZones.category);
+  const zones = zoneDefs(maf);
+  const el = document.getElementById('mafZoneGrid');
+  el.innerHTML = '';
+  zones.forEach(z=>{
+    const matches = entriesInZone(state.runZones.entries, z);
+    let paceText, paceClass = 'zone-pace';
+    if(matches.length){
+      const avgPace = matches.reduce((s,e)=>s+e.paceSec,0)/matches.length;
+      paceText = formatPace(avgPace);
+    } else {
+      paceClass += ' fallback';
+      if(z.id==='aerobic') paceText = `~${RUN_VDOT_ZONES.zones[0].pace} (starting estimate from your VDOT Easy pace)`;
+      else if(z.id==='recovery') paceText = 'No data yet — expect slower than your Aerobic Base pace';
+      else if(z.id==='tempo') paceText = 'No data yet — likely near the faster end of your Easy range';
+      else paceText = 'Not applicable during base block';
+    }
+    const card = document.createElement('div');
+    card.className = 'zone-card'+(z.future?' future':'');
+    card.innerHTML = `
+      <div class="zone-top">
+        <div class="zone-title">${z.label}</div>
+        <div class="zone-hr">${z.high==null ? z.low+'+ bpm' : z.low+'–'+z.high+' bpm'}</div>
+      </div>
+      <div class="zone-pace-row">
+        <div class="${paceClass}">${paceText}</div>
+        ${matches.length ? `<div class="zone-count">from ${matches.length} logged entr${matches.length===1?'y':'ies'}</div>` : (z.future?`<span class="tag-future">future</span>`:'')}
+      </div>
+      <div class="zone-note">${z.note}</div>
+    `;
+    el.appendChild(card);
+  });
+  renderInsight(maf, zones);
+}
+function renderInsight(maf, zones){
+  const el = document.getElementById('insightBlock');
+  const aerobicZone = zones.find(z=>z.id==='aerobic');
+  const matches = entriesInZone(state.runZones.entries.filter(e=>e.type!=='maf_test'), aerobicZone);
+  if(matches.length >= 3){
+    const avgPace = matches.reduce((s,e)=>s+e.paceSec,0)/matches.length;
+    if(avgPace < parsePace('6:05')){
+      el.innerHTML = `<div class="insight">Your logged Aerobic Base pace (${formatPace(avgPace)}) is coming in faster than the starting VDOT-based estimate — a reasonable sign your aerobic fitness is ahead of where the formula alone would suggest. Worth keeping an eye on over the next few weeks rather than reading too much into it yet.</div>`;
+    } else {
+      el.innerHTML = '';
+    }
+  } else {
+    el.innerHTML = '';
+  }
+}
+function renderLogForm(){
+  if(!document.getElementById('entry-date').value){
+    document.getElementById('entry-date').value = new Date().toISOString().slice(0,10);
+  }
+}
+function renderMafTrend(){
+  const el = document.getElementById('mafTrendList');
+  const tests = state.runZones.entries.filter(e=>e.type==='maf_test').sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(!tests.length){
+    el.innerHTML = '<div class="empty">No MAF tests logged yet — run one at your MAF HR and log it above to start tracking trend.</div>';
+    return;
+  }
+  let html = '';
+  tests.forEach((t,i)=>{
+    let deltaHtml = '';
+    if(i>0){
+      const delta = t.paceSec - tests[i-1].paceSec;
+      if(delta < 0){
+        deltaHtml = `<span class="delta-up">▲ ${formatPace(Math.abs(delta)).replace('/km','')} faster</span>`;
+      } else if(delta > 0){
+        deltaHtml = `<span class="delta-down">▼ ${formatPace(delta).replace('/km','')} slower</span>`;
+      } else {
+        deltaHtml = 'no change';
+      }
+    }
+    const d = new Date(t.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    html += `<div class="hist-item maf-test">
+      <span class="l">${d} — ${formatPace(t.paceSec)} @ ${t.hr} bpm${t.note?' — '+t.note:''}</span>
+      <span class="r">${deltaHtml}</span>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+function renderRecentLog(){
+  const el = document.getElementById('recentLogList');
+  if(!state.runZones.entries.length){
+    el.innerHTML = '<div class="empty">Nothing logged yet.</div>';
+    return;
+  }
+  const recent = [...state.runZones.entries].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,10);
+  el.innerHTML = recent.map(e=>{
+    const d = new Date(e.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    return `<div class="hist-item">
+      <span class="l">${e.type==='maf_test'?'MAF Test':'Run'} — ${formatPace(e.paceSec)} @ ${e.hr} bpm${e.distanceKm?' · '+e.distanceKm+'km':''}${e.note?' — '+e.note:''}</span>
+      <span class="r">${d}</span>
+    </div>`;
+  }).join('');
+}
+
+function render(){
+  renderAbout();
+  renderRecommendation();
+  renderGrid();
+  renderHistoryList();
+  renderVdotZones();
+  renderMafInputs();
+  renderMafResult();
+  renderMafZones();
+  renderLogForm();
+  renderMafTrend();
+  renderRecentLog();
+}
+
+/* ---------- EVENTS ---------- */
+document.getElementById('saveMafBtn').onclick = ()=>{
+  state.runZones.age = Number(document.getElementById('in-age').value) || state.runZones.age;
+  state.runZones.category = document.getElementById('in-category').value;
+  state.runZones.maf = computeMaf(state.runZones.age, state.runZones.category);
+  saveState();
+  render();
+  showToast('MAF number saved');
+};
+document.getElementById('logEntryBtn').onclick = ()=>{
+  const type = document.getElementById('entry-type').value;
+  const date = document.getElementById('entry-date').value || new Date().toISOString().slice(0,10);
+  const hr = Number(document.getElementById('entry-hr').value);
+  const paceStr = document.getElementById('entry-pace').value;
+  const paceSec = parsePace(paceStr);
+  const distanceKm = document.getElementById('entry-dist').value ? Number(document.getElementById('entry-dist').value) : null;
+  const note = document.getElementById('entry-note').value;
+
+  if(!hr || !paceSec){
+    showToast('Need a valid HR and pace (m:ss) to log this');
+    return;
+  }
+
+  state.runZones.entries.push({
+    id: 'e'+Date.now(),
+    type, date, hr, paceSec, distanceKm, note,
+  });
+  saveState();
+
+  document.getElementById('entry-hr').value = '';
+  document.getElementById('entry-pace').value = '';
+  document.getElementById('entry-dist').value = '';
+  document.getElementById('entry-note').value = '';
+
+  render();
+  showToast(type==='maf_test' ? 'MAF test logged' : 'Run logged');
+};
+
+/* ---------- INIT ---------- */
+(function init(){
+  renderTriNav('run', '../');
+  state = triLoadState();
+  if(state.runZones.maf == null) state.runZones.maf = computeMaf(state.runZones.age, state.runZones.category);
+  const params = new URLSearchParams(location.search);
+  highlightId = params.get('highlight');
+  if(highlightId && RUN_LIBRARY.some(x=>x.id===highlightId)) openCardId = highlightId;
+  render();
+  if(highlightId){
+    document.getElementById('libcard-'+highlightId)?.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+})();
+</script>
+</body>
+</html>

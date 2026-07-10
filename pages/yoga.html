@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yoga — Base Build</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/theme.css">
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="tri-nav" id="triNav"></nav>
+
+  <header>
+    <div class="eyebrow">Personal · Base Build Companion</div>
+    <h1>Yoga</h1>
+    <p class="subline">Monday is always off from structured training — this is the one thing that lives there.</p>
+  </header>
+
+  <div class="about" id="aboutBlock"></div>
+
+  <div class="workout-grid" id="yogaGrid"></div>
+
+  <div class="summary-card">
+    <h3>Recent history</h3>
+    <div id="historyList"></div>
+  </div>
+
+  <div class="footer-note">Saved automatically in this browser (localStorage), shared with every other page on this site.</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../shared/storage.js"></script>
+<script src="../data/strength-library.js"></script>
+<script src="../data/run-library.js"></script>
+<script src="../data/bike-library.js"></script>
+<script src="../data/swim-library.js"></script>
+<script src="../data/yoga-library.js"></script>
+<script src="../shared/nav.js"></script>
+<script>
+const DISCIPLINE_LIB = {run:RUN_LIBRARY, bike:BIKE_LIBRARY, swim:SWIM_LIBRARY, yoga:YOGA_LIBRARY};
+
+let state = null;
+let openCardId = null;
+let highlightId = null;
+
+function saveState(){
+  if(!triSaveState(state)) showToast('Save failed — try again');
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function findLibraryWorkout(id){
+  for(const cat of Object.keys(LIBRARY)){
+    const found = LIBRARY[cat].find(x=>x.id===id);
+    if(found) return {category:cat, discipline:'strength', workout:found};
+  }
+  for(const disc of Object.keys(DISCIPLINE_LIB)){
+    const found = DISCIPLINE_LIB[disc].find(x=>x.id===id);
+    if(found) return {category:null, discipline:disc, workout:found};
+  }
+  return null;
+}
+function daysSince(iso){
+  if(!iso) return Infinity;
+  const then = new Date(iso);
+  const now = new Date();
+  return Math.floor((now - then) / (1000*60*60*24));
+}
+function lastDoneFor(id){
+  const entries = state.history.filter(h=>h.id===id);
+  if(!entries.length) return null;
+  return entries.reduce((a,b)=> new Date(a.date) > new Date(b.date) ? a : b);
+}
+
+function renderAbout(){
+  document.getElementById('aboutBlock').innerHTML =
+    `<b>What's here:</b> the one yoga session in the plan — a slow full-body flow through hips, hamstrings, and shoulders. It's not rotation-gated like the other libraries since there's only one entry; the point is consistency, not variety.<br><br><b>Two ways to use it:</b> mark Monday done directly on the <a href="../index.html" class="lib-link">Schedule</a>, or log it here on the fly.`;
+}
+function renderGrid(){
+  const el = document.getElementById('yogaGrid');
+  el.innerHTML = '';
+  YOGA_LIBRARY.forEach(x=>{
+    const last = lastDoneFor(x.id);
+    const card = document.createElement('div');
+    card.className = 'wcard'+(openCardId===x.id?' open':'')+(highlightId===x.id?' highlight':'');
+    card.id = 'libcard-'+x.id;
+    card.innerHTML = `
+      <div class="wcard-top">
+        <div>
+          <div class="wcard-title">${x.title}</div>
+          <div class="wcard-meta">${x.equipment}</div>
+        </div>
+        <div class="wcard-dur">${x.duration} min</div>
+      </div>
+      <div class="tag-row">${x.focus.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      <div class="last-done">${last ? 'Last done '+daysSince(last.date)+' day'+(daysSince(last.date)===1?'':'s')+' ago'+(last.rpe?' · RPE '+last.rpe:'') : 'Not logged yet'}</div>
+      <div class="wcard-detail">
+        <div class="blurb">${x.blurb}</div>
+        <div class="ex-list">
+          ${x.exercises.map(e=>`<div class="ex-row"><span>${e.name}</span><span>${e.v}</span></div>`).join('')}
+        </div>
+        <div class="card-controls">
+          <button class="small logBtn" data-id="${x.id}">Log this as done today</button>
+          <div class="rpe-row">RPE <select class="rpeSelect" data-id="${x.id}">
+            <option value="">–</option>
+            ${[1,2,3,4,5].map(v=>`<option value="${v}">${v}</option>`).join('')}
+          </select></div>
+        </div>
+        <textarea placeholder="Optional note" class="noteInput" data-id="${x.id}"></textarea>
+      </div>
+    `;
+    card.querySelector('.wcard-top').onclick = ()=>{
+      openCardId = openCardId===x.id ? null : x.id;
+      render();
+    };
+    el.appendChild(card);
+  });
+
+  el.querySelectorAll('.logBtn').forEach(btn=>{
+    btn.onclick = (e)=>{
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const found = findLibraryWorkout(id);
+      const rpeSel = el.querySelector(`.rpeSelect[data-id="${id}"]`);
+      const noteInput = el.querySelector(`.noteInput[data-id="${id}"]`);
+      state.history.push({
+        id,
+        date: new Date().toISOString(),
+        rpe: rpeSel.value || null,
+        note: noteInput.value || '',
+      });
+      saveState();
+      showToast(`Logged: ${found.workout.title}`);
+      render();
+    };
+  });
+}
+function renderHistoryList(){
+  const el = document.getElementById('historyList');
+  const relevant = state.history.filter(h=>{
+    const f = findLibraryWorkout(h.id);
+    return f && f.discipline === 'yoga';
+  });
+  if(!relevant.length){
+    el.innerHTML = '<div class="empty">Nothing logged yet — mark Monday done on the Schedule, or log it above.</div>';
+    return;
+  }
+  const recent = [...relevant].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,10);
+  el.innerHTML = recent.map(h=>{
+    const d = new Date(h.date);
+    const dateLbl = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    return `<div class="history-item">
+      <div class="meta">${dateLbl}${h.planWorkoutId ? ' · via weekly plan' : ' · logged directly'}</div>
+      <div style="font-size:13px;">${YOGA_LIBRARY[0].title}${h.rpe?' · RPE '+h.rpe:''}${h.note?' — '+h.note:''}</div>
+    </div>`;
+  }).join('');
+}
+
+function render(){
+  renderAbout();
+  renderGrid();
+  renderHistoryList();
+}
+
+(function init(){
+  renderTriNav('yoga', '../');
+  state = triLoadState();
+  const params = new URLSearchParams(location.search);
+  highlightId = params.get('highlight');
+  if(highlightId && YOGA_LIBRARY.some(x=>x.id===highlightId)) openCardId = highlightId;
+  render();
+  if(highlightId){
+    document.getElementById('libcard-'+highlightId)?.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+})();
+</script>
+</body>
+</html>
